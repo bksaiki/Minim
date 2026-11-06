@@ -4,6 +4,11 @@ error: *: fixnum overflow
 error: +: not a fixnum: #t
 error: quotient: division by zero: 0
 error: <=: not a fixnum: a
-error: number->string: not a fixnum: a
+error: number->string: not a number: a
 error: number->string: bad radix: 3
 error: number->string: bad radix: x
+error: number->string: bad radix: 2
+error: string->number: not a string: a
+error: string->number: bad radix: 3
+error: string->number: fixnum out of range: "99999999999999999999"
+error: string->number: no exact representation: "#e1.5"

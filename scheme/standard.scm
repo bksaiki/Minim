@@ -19,14 +19,14 @@
    open-output-string or output-port-open? output-port? pair? parameterize peek-char peek-u8
    port? procedure? quasiquote quote quotient raise raise-continuable read-bytevector
    read-bytevector! read-char read-error? read-line read-string read-u8 remainder reverse
-   set! set-car! set-cdr! string string->list string->symbol string->utf8 string->vector
-   string-append string-copy string-copy! string-fill! string-for-each string-length
-   string-map string-ref string-set! string<=? string<? string=? string>=? string>? string?
-   substring symbol->string symbol=? symbol? syntax-error syntax-rules textual-port?
-   u8-ready? unless unquote unquote-splicing utf8->string values vector vector->list
-   vector->string vector-append vector-copy vector-copy! vector-fill! vector-for-each
-   vector-length vector-map vector-ref vector-set! vector? when with-exception-handler
-   write-bytevector write-char write-string write-u8 zero?))
+   set! set-car! set-cdr! string string->list string->number string->symbol string->utf8
+   string->vector string-append string-copy string-copy! string-fill! string-for-each
+   string-length string-map string-ref string-set! string<=? string<? string=? string>=?
+   string>? string? substring symbol->string symbol=? symbol? syntax-error syntax-rules
+   textual-port? u8-ready? unless unquote unquote-splicing utf8->string values vector
+   vector->list vector->string vector-append vector-copy vector-copy! vector-fill!
+   vector-for-each vector-length vector-map vector-ref vector-set! vector? when
+   with-exception-handler write-bytevector write-char write-string write-u8 zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library
@@ -71,9 +71,9 @@
    make-vector map member memq memv newline not null-environment null? number->string
    open-input-file open-output-file or output-port? pair? peek-char procedure? quasiquote
    quote quotient read read-char remainder reverse scheme-report-environment set! set-car!
-   set-cdr! string string->list string->symbol string-append string-ci<=? string-ci<?
-   string-ci=? string-ci>=? string-ci>? string-copy string-fill! string-length string-ref
-   string-set! string<=? string<? string=? string>=? string>? string? substring
+   set-cdr! string string->list string->number string->symbol string-append string-ci<=?
+   string-ci<? string-ci=? string-ci>=? string-ci>? string-copy string-fill! string-length
+   string-ref string-set! string<=? string<? string=? string>=? string>? string? substring
    symbol->string symbol? syntax-rules unquote unquote-splicing values vector vector->list
    vector-fill! vector-length vector-ref vector-set! vector? with-input-from-file
    with-output-to-file write write-char zero?))

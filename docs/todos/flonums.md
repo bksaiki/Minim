@@ -146,6 +146,20 @@ syntax report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'read|numbers|r7rs'
 ```
 
+**Done.**  The parser is `minim_parse_number` (`src/number.h`), returning
+`MINIM_PARSE_OK`, `_NOT_NUMBER`, `_OUT_OF_RANGE`, or `_NOT_EXACT`; the
+reader raises `fixnum out of range` or `no exact representation` for the
+last two, `string->number` the same with its name.  The reader's `#` tokens
+now keep their `#`, so a bad one's irritant is `"#x1.5"`, not `"x1.5"`.
+Prefixes and exponent markers are case-insensitive; `+inf.0` and `+nan.0`
+aren't.  An inexact integer in radix 2, 8, or 16 is accumulated in a double,
+rounding at each step past 2^53.  `number->string` of a flonum writes it as
+the printer does, through a string port.  `string->number` of a rational,
+`"1/2"`, is `#f`.  Reports: Numeric syntax 8 to 90 passed (its forms now
+read, so it counts more tests), the rest mostly `equal?` of flonums (Phase
+3), complex numbers, and rationals; 6.9 all 39; Read syntax 78 to 85; 6.2's
+errors 76 to 18.  `(scheme r5rs)` gained `string->number`.
+
 ### Phase 3 - Equivalence
 
 - `src/equal.c`: `eqv?`, its own primitive; `equal?` and `equal-hash` of

@@ -51,3 +51,22 @@
 (number->string 'a)
 (number->string 5 3)
 (number->string 5 'x)
+
+; Flonums, and string->number: a radix, a prefix overriding it, and #f for a
+; non-number.
+(number->string 1.5)
+(number->string -0.0 10)
+(string->number "42")
+(string->number "-1.5e2")
+(string->number "ff" 16)
+(string->number "#b101" 16)
+(string->number "101" 2)
+(string->number "+inf.0")
+(string->number "abc")
+(string->number "")
+(string->number "1/2")
+(number->string 1.5 2)
+(string->number 'a)
+(string->number "1" 3)
+(string->number "99999999999999999999")
+(string->number "#e1.5")
