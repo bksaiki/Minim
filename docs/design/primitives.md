@@ -277,6 +277,9 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 | `(get-environment-variables)` | the environment, as a list of `(name . value)` strings |
 | `(command-line)` | the script's or program's path, then its arguments, as strings; `("minim")` at the REPL |
 | `(%exit status)` | shuts the runtime down, flushing and closing file ports, and ends the process with the fixnum `status` |
+| `(current-second)` | seconds since the epoch, UTC (R7RS allows it for TAI), a flonum |
+| `(current-jiffy)` | nanoseconds since Minim started, a fixnum, on a monotonic clock (`minim_monotonic_ns`), so it never goes backward when the wall clock is set |
+| `(jiffies-per-second)` | 1000000000 |
 
 ## Conventions
 

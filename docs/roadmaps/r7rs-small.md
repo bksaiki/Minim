@@ -45,7 +45,7 @@ provides.  Update it as names are added.
 | `(scheme r5rs)` | 193 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
-| `(scheme time)` | 0 | 3 | not defined |
+| `(scheme time)` | 3 | 3 | |
 | `(scheme write)` | 3 | 4 | `write-shared` waits for datum labels |
 
 **Target:** R7RS-small compliance: every standard library complete, as the
@@ -214,7 +214,8 @@ strings, vectors, and control.  Mostly prelude procedures.
   `get-environment-variables`.
 - Done: `(scheme lazy)`, promises after R7RS 7.3
   (`docs/design/prelude.md`).
-- Planned: `(scheme time)` (`docs/todos/time.md`).
+- Done: `(scheme time)`, over the wall clock and a monotonic one
+  (`docs/design/primitives.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -246,8 +247,8 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.13 Input and output | 61 | 1 | 0 |
 | Read syntax | 85 | 6 | 2 |
 | Numeric syntax | 121 | 20 | 37 |
-| 6.14 System interface | 7 | 6 | 0 |
-| **Total** | 987 | 138 | 63 |
+| 6.14 System interface | 11 | 2 | 0 |
+| **Total** | 991 | 134 | 63 |
 
 The reports name each failing test by line; the gaps are those of the
 coverage table and of milestones 6 to 9.  Update the table with the reports.
