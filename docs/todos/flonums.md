@@ -173,6 +173,13 @@ on flonums; `equal-hash` of equal flonums.
 cmake --build --preset dev && ctest --preset dev -R 'equality|r7rs'
 ```
 
+**Done.**  `is_eqv` compares flonums' bits; `equal?` falls back to it for
+values not compared by contents, and `equal-hash` mixes the bits under a
+new `HASH_FLONUM` marker.  `memv`, `assv`, and `case` needed no change.
+Reports: Numeric syntax 90 to 119 passed; 6.2 27 to 28.  Numeric syntax's
+remaining failures: exponent markers `s` `f` `d` `l` (R5RS's, not R7RS's),
+case-insensitive `+NAN.0` and `+InF.0`, rationals, and complex numbers.
+
 ### Phase 4 - Arithmetic and comparison
 
 - `src/number.c`: generic `+`, `-`, `*`, `/`, the comparisons, `abs`,

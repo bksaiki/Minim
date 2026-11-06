@@ -1,15 +1,3 @@
-FAIL 2338 (values z) => 1.0
-FAIL 2339 (values z) => 1.0
-FAIL 2340 (values z) => -1.0
-FAIL 2342 (values z) => 1.0
-FAIL 2343 (values z) => 1.0
-FAIL 2344 (values z) => 0.1
-FAIL 2345 (values z) => -0.1
-FAIL 2347 (values z) => -0.0
-FAIL 2348 (values z) => -0.0
-FAIL 2349 (values z) => 1.0
-FAIL 2354 (values z) => 100.0
-FAIL 2355 (values z) => 100.0
 FAIL 2356 (values z) => 1s2
 FAIL 2357 (values z) => 1S2
 FAIL 2358 (values z) => 1f2
@@ -18,15 +6,9 @@ FAIL 2360 (values z) => 1d2
 FAIL 2361 (values z) => 1D2
 FAIL 2362 (values z) => 1l2
 FAIL 2363 (values z) => 1L2
-FAIL 2365 (values z) => +nan.0
 FAIL 2366 (values z) => +NAN.0
-FAIL 2367 (values z) => +inf.0
 FAIL 2368 (values z) => +InF.0
-FAIL 2369 (values z) => -inf.0
 FAIL 2370 (values z) => -iNF.0
-FAIL 2371 (values z) => +nan.0
-FAIL 2372 (values z) => +inf.0
-FAIL 2373 (values z) => -inf.0
 ERROR 2375 ("unbound variable" /)
 ERROR 2376 ("bad # syntax" "#e1/2")
 FAIL 2377 (values z) => 10/2
@@ -59,13 +41,8 @@ ERROR 2410 ("unbound variable" make-rectangular)
 ERROR 2411 ("unbound variable" make-rectangular)
 ERROR 2412 ("unbound variable" make-rectangular)
 ERROR 2413 ("unbound variable" make-rectangular)
-FAIL 2436 (values z) => 16.0
-FAIL 2437 (values z) => 16.0
 ERROR 2438 ("bad # syntax" "#i#x1/10")
 ERROR 2439 ("bad # syntax" "#x#i1/10")
-FAIL 2441 (values z) => 1.0
-FAIL 2442 (values z) => 0.1
-FAIL 2444 (values z) => 100.0
 ERROR 2446 ("bad # syntax" "#x10/2")
 ERROR 2447 ("bad # syntax" "#x11/2")
 ERROR 2448 ("bad # syntax" "#d11/2")
@@ -76,12 +53,6 @@ ERROR 2454 ("bad # syntax" "#d10+11i")
 FAIL 2477 (pair? ls) => #f
 FAIL 2478 (pair? ls) => #f
 FAIL 2479 (pair? ls) => #f
-FAIL 2480 (eqv? n (string->number (car ls))) => #f
 FAIL 2481 (pair? ls) => #f
-FAIL 2482 (eqv? n (string->number (car ls))) => #f
-FAIL 2483 (eqv? n (string->number (car ls))) => #f
-FAIL 2484 (eqv? n (string->number (car ls))) => #f
-FAIL 2485 (eqv? n (string->number (car ls))) => #f
-FAIL 2486 (eqv? n (string->number (car ls))) => #f
 FAIL 2487 (pair? ls) => #f
-Numeric syntax: 90 passed, 47 failed, 39 errors
+Numeric syntax: 119 passed, 18 failed, 39 errors

@@ -6,12 +6,31 @@
 #include "prims.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "heap.h"
 
 static minim_obj prim_eq(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     return boolean(args[0] == args[1]);
+}
+
+static uint64_t flonum_bits(minim_obj x) {
+    double d = minim_flonum_value(x);
+    uint64_t bits;
+    memcpy(&bits, &d, sizeof(bits));
+    return bits;
+}
+
+// Identity, or flonums with the same bits
+static bool is_eqv(minim_obj a, minim_obj b) {
+    return a == b
+        || (minim_is_flonum(a) && minim_is_flonum(b) && flonum_bits(a) == flonum_bits(b));
+}
+
+static minim_obj prim_eqv(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(is_eqv(args[0], args[1]));
 }
 
 // Pairs of values `equal?` has yet to compare, as `a0, b0, a1, b1, ...`.  It
@@ -68,7 +87,7 @@ static bool is_equal(minim_obj a, minim_obj b) {
             result = n == minim_bytevector_length(b)
                 && memcmp(minim_bytevector_data(a), minim_bytevector_data(b), n) == 0;
         } else {
-            result = false;  // distinct, and not both of a kind compared by contents
+            result = is_eqv(a, b);
         }
     }
 
@@ -87,7 +106,7 @@ static minim_obj prim_equal(minim_obj *args, size_t n) {
 enum { HASH_BUDGET = 64 };
 
 // Kind markers, so different kinds with the same contents hash differently
-enum { HASH_PAIR = 1, HASH_VECTOR, HASH_SYMBOL, HASH_CLOSURE, HASH_BYTEVECTOR };
+enum { HASH_PAIR = 1, HASH_VECTOR, HASH_SYMBOL, HASH_CLOSURE, HASH_BYTEVECTOR, HASH_FLONUM };
 
 // Hash agreeing with `equal?`: equal values visit the same nodes in the same
 // order, so they consume the budget identically.
@@ -98,6 +117,8 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         return minim_string_hash(x);
     if (minim_is_symbol(x))
         return minim_hash_mix(minim_string_hash(minim_symbol_name(x)), HASH_SYMBOL);
+    if (minim_is_flonum(x))
+        return minim_hash_mix(minim_hash_mix(MINIM_HASH_INIT, HASH_FLONUM), flonum_bits(x));
     if (minim_is_primitive(x))
         return minim_hash_mix(MINIM_HASH_INIT, (uintptr_t)minim_primitive_fn(x));
     if (minim_is_closure(x) || minim_is_continuation(x) || minim_is_error_object(x)
@@ -163,7 +184,7 @@ static minim_obj prim_boolean_eq(minim_obj *args, size_t n) {
 
 const minim_prim_def minim_equal_prims[] = {
     {"eq?", prim_eq, 2, 2},
-    {"eqv?", prim_eq, 2, 2},
+    {"eqv?", prim_eqv, 2, 2},
     {"equal?", prim_equal, 2, 2},
     {"equal-hash", prim_equal_hash, 1, 1},
     {"string-hash", prim_string_hash, 1, 1},

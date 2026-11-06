@@ -190,5 +190,4 @@ FAIL 1054 (inexact 1) raised ("unbound variable" inexact)
 FAIL 1055 (inexact? (inexact 1)) raised ("unbound variable" inexact?)
 FAIL 1056 (exact 1.0) raised ("unbound variable" exact)
 FAIL 1057 (exact? (exact 1.0)) raised ("unbound variable" exact?)
-FAIL 1061 (string->number "1e2") => 100.0
-6.2 Numbers: 27 passed, 175 failed, 18 errors
+6.2 Numbers: 28 passed, 174 failed, 18 errors
