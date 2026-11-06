@@ -10,6 +10,7 @@
 hey!(1 2)
 (#t #t #f)
 #\A
+lazy
 (lib point) loaded
 (1 2)
 25

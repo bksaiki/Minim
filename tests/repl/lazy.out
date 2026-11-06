@@ -1,0 +1,15 @@
+#<promise>
+#t
+once (42 42)
+#t
+5
+#t
+#t
+x
+(#f #f #f)
+6
+6
+done
+"first try"
+ok
+2

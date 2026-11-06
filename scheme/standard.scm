@@ -45,6 +45,7 @@
  '(call-with-input-file call-with-output-file delete-file file-exists?
    open-binary-input-file open-binary-output-file open-input-file open-output-file
    with-input-from-file with-output-to-file))
+(%define-system-library '(scheme lazy) '(delay delay-force force make-promise promise?))
 (%define-system-library '(scheme load) '(load))
 (%define-system-library
  '(scheme process-context)
@@ -64,18 +65,18 @@
    char-ci=? char-ci>=? char-ci>? char-downcase char-lower-case? char-numeric? char-ready?
    char-upcase char-upper-case? char-whitespace? char<=? char<? char=? char>=? char>? char?
    close-input-port close-output-port cond cons current-input-port current-output-port
-   define define-syntax display do dynamic-wind else eof-object? eq? equal? eqv? for-each if
-   input-port? integer->char lambda length let let* let-syntax letrec letrec-syntax list
-   list->string list->vector list-ref list-tail list? load make-string make-vector map
-   member memq memv newline not null-environment null? number->string open-input-file
-   open-output-file or output-port? pair? peek-char procedure? quasiquote quote quotient
-   read read-char remainder reverse scheme-report-environment set! set-car! set-cdr! string
-   string->list string->symbol string-append string-ci<=? string-ci<? string-ci=?
-   string-ci>=? string-ci>? string-copy string-fill! string-length string-ref string-set!
-   string<=? string<? string=? string>=? string>? string? substring symbol->string symbol?
-   syntax-rules unquote unquote-splicing values vector vector->list vector-fill!
-   vector-length vector-ref vector-set! vector? with-input-from-file with-output-to-file
-   write write-char zero?))
+   define define-syntax delay display do dynamic-wind else eof-object? eq? equal? eqv?
+   for-each force if input-port? integer->char lambda length let let* let-syntax letrec
+   letrec-syntax list list->string list->vector list-ref list-tail list? load make-string
+   make-vector map member memq memv newline not null-environment null? number->string
+   open-input-file open-output-file or output-port? pair? peek-char procedure? quasiquote
+   quote quotient read read-char remainder reverse scheme-report-environment set! set-car!
+   set-cdr! string string->list string->symbol string-append string-ci<=? string-ci<?
+   string-ci=? string-ci>=? string-ci>? string-copy string-fill! string-length string-ref
+   string-set! string<=? string<? string=? string>=? string>? string? substring
+   symbol->string symbol? syntax-rules unquote unquote-splicing values vector vector->list
+   vector-fill! vector-length vector-ref vector-set! vector? with-input-from-file
+   with-output-to-file write write-char zero?))
 
 ;; (minim), after Chez's (chezscheme): every public system binding, the
 ;; standard libraries' names and Minim's own.  R7RS puts each name in one
@@ -85,8 +86,8 @@
  '(minim)
  (append (%exported-names
           '((scheme base) (scheme case-lambda) (scheme char) (scheme cxr) (scheme eval)
-            (scheme file) (scheme load) (scheme process-context) (scheme read) (scheme repl)
-            (scheme write)))
+            (scheme file) (scheme lazy) (scheme load) (scheme process-context) (scheme read)
+            (scheme repl) (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash filter fixnum? fold fold-right gensym import parameter?
