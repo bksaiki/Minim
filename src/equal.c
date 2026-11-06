@@ -172,16 +172,6 @@ static minim_obj prim_is_boolean(minim_obj *args, size_t n) {
     return boolean(minim_is_boolean(args[0]));
 }
 
-// The boolean `x`, as a key for compare; raises `msg` otherwise.
-static intptr_t boolean_key(minim_obj x, const char *msg) {
-    check(minim_is_boolean(x), msg, x);
-    return (intptr_t)x;
-}
-
-static minim_obj prim_boolean_eq(minim_obj *args, size_t n) {
-    return compare(args, n, boolean_key, eq, "boolean=?: not a boolean");
-}
-
 const minim_prim_def minim_equal_prims[] = {
     {"eq?", prim_eq, 2, 2},
     {"eqv?", prim_eqv, 2, 2},
@@ -190,6 +180,5 @@ const minim_prim_def minim_equal_prims[] = {
     {"string-hash", prim_string_hash, 1, 1},
     {"not", prim_not, 1, 1},
     {"boolean?", prim_is_boolean, 1, 1},
-    {"boolean=?", prim_boolean_eq, 1, MINIM_VARIADIC},
     {NULL, NULL, 0, 0},
 };

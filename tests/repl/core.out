@@ -49,6 +49,8 @@ hi
 (2)
 ("minim")
 (#<void>)
+x
+(1 2)
 #<procedure f>
 (#<procedure add1> #<procedure add2>)
 #<procedure f>

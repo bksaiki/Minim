@@ -110,6 +110,10 @@ y
 (list (void))
 (void 1)
 
+; identity, Minim's own.
+(identity 'x)
+(map identity '(1 2))
+
 ; Binding names an unnamed closure; a named one keeps its name, and an
 ; argument doesn't name one.
 (define (f x) x)
