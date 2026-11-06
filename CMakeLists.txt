@@ -77,6 +77,9 @@ add_library(libminim STATIC
     src/vector.c
 )
 target_include_directories(libminim PUBLIC include PRIVATE src)
+if(NOT MSVC)
+    target_link_libraries(libminim PUBLIC m)
+endif()
 set_target_properties(libminim PROPERTIES OUTPUT_NAME minim)  # libminim.a, not liblibminim.a
 
 add_executable(minim src/main.c)

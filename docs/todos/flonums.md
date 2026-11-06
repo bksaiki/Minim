@@ -198,6 +198,22 @@ slow.  The reports updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'numbers|r7rs' && ctest --preset stress -R numbers
 ```
 
+**Done.**  One path, not a fixnum fast path beside a generic one: each
+argument becomes a `num` (a fixnum, or a flonum if `flo`), and `fold` applies
+an operation pairwise, left to right, allocating only the result.  The
+comparisons return an outcome bit (`LT`, `EQ`, `GT`, `UNORDERED`), so each
+procedure is a mask, and `zero?`, `positive?`, `negative?` compare with 0.
+Left to right means a fixnum overflow before a flonum argument still raises:
+`(+ 1152921504606846975 1 1.0)` raises, `(+ 1.0 1152921504606846975 1)`
+doesn't.  `(* 0 1.5)` is `0.0`.  `max` and `min` give NaN if any argument is.
+Type errors now say `not a number`; `/`'s errors have no irritant, as
+overflow's.  `CMakeLists.txt` links `libm` (not on MSVC), now that `fabs`
+and `fmod` are called.  `quotient` and `remainder` stay fixnum-only.
+Benchmark against this branch's previous commit, 15 runs, release: fib
+0.263 to 0.265 s median, let 0.269 to 0.272, noise.  Reports: 6.2 28 to 74
+passed; 6.11 24 to 29; 4.2, 4.3, 6.4, and 6.10 one or two more each;
+Numeric syntax 119 to 121, its two new failures rationals (`1/2`).
+
 ### Phase 5 - Predicates and conversion
 
 - `src/number.c`: the predicates, `exact`, `inexact`, `floor`, `ceiling`,

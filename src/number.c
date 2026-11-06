@@ -1,6 +1,6 @@
 /**
  * @file
- * Numbers: parsing, and fixnum arithmetic, comparison, and conversion.
+ * Numbers: parsing, arithmetic, comparison, and conversion.
  */
 
 #include "number.h"
@@ -141,41 +141,238 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
     return MINIM_PARSE_OK;
 }
 
-// Fixnum sums never overflow intptr_t, so range checks after each step suffice.
-static minim_obj prim_add(minim_obj *args, size_t n) {
-    intptr_t sum = 0;
-    for (size_t i = 0; i < n; i++) {
-        sum += fixnum_arg(args[i], "+: not a fixnum");
-        fixnum_result(sum, "+: fixnum overflow");
-    }
-    return minim_fixnum(sum);
+// A number argument: a fixnum, or a flonum if `flo`.
+typedef struct num {
+    bool flo;
+    intptr_t i;
+    double d;
+} num;
+
+// The number `x`; raises `msg` otherwise.
+static num num_arg(minim_obj x, const char *msg) {
+    if (minim_is_fixnum(x))
+        return (num){.i = minim_fixnum_value(x)};
+    check(minim_is_flonum(x), msg, x);
+    return (num){.flo = true, .d = minim_flonum_value(x)};
 }
 
-static minim_obj prim_sub(minim_obj *args, size_t n) {
-    intptr_t v = fixnum_arg(args[0], "-: not a fixnum");
-    if (n == 1)
-        return fixnum_result(-v, "-: fixnum overflow");
-    for (size_t i = 1; i < n; i++) {
-        v -= fixnum_arg(args[i], "-: not a fixnum");
-        fixnum_result(v, "-: fixnum overflow");
+static double num_double(num a) {
+    return a.flo ? a.d : (double)a.i;
+}
+
+static num flonum(double d) {
+    return (num){.flo = true, .d = d};
+}
+
+static minim_obj num_result(num a) {
+    return a.flo ? minim_make_flonum(a.d) : minim_fixnum(a.i);
+}
+
+// Folds `op` over the numbers `args`, from `acc`.
+static minim_obj fold(minim_obj *args, size_t n, num acc, num (*op)(num, num),
+                      const char *msg) {
+    for (size_t i = 0; i < n; i++)
+        acc = op(acc, num_arg(args[i], msg));
+    return num_result(acc);
+}
+
+// Fixnum sums never overflow intptr_t, so a range check after suffices.
+static num add(num a, num b) {
+    if (a.flo || b.flo)
+        return flonum(num_double(a) + num_double(b));
+    fixnum_result(a.i + b.i, "+: fixnum overflow");
+    return (num){.i = a.i + b.i};
+}
+
+static num sub(num a, num b) {
+    if (a.flo || b.flo)
+        return flonum(num_double(a) - num_double(b));
+    fixnum_result(a.i - b.i, "-: fixnum overflow");
+    return (num){.i = a.i - b.i};
+}
+
+static num mul(num a, num b) {
+    if (a.flo || b.flo)
+        return flonum(num_double(a) * num_double(b));
+    // Compare magnitudes, which fit in uint64_t, before multiplying.
+    uint64_t x = a.i < 0 ? -(uint64_t)a.i : (uint64_t)a.i;
+    uint64_t y = b.i < 0 ? -(uint64_t)b.i : (uint64_t)b.i;
+    uint64_t limit = (uint64_t)MINIM_FIXNUM_MAX + ((a.i < 0) != (b.i < 0) ? 1 : 0);
+    if (y != 0 && x > limit / y)
+        minim_error("*: fixnum overflow", MINIM_VOID);
+    return (num){.i = a.i * b.i};
+}
+
+// Exact if the fixnums divide evenly; an exact zero divisor raises.
+static num divide(num a, num b) {
+    if (!b.flo && b.i == 0)
+        minim_error("/: division by zero", MINIM_VOID);
+    if (!a.flo && !b.flo && a.i % b.i == 0) {
+        fixnum_result(a.i / b.i, "/: fixnum overflow");
+        return (num){.i = a.i / b.i};
     }
-    return minim_fixnum(v);
+    return flonum(num_double(a) / num_double(b));
+}
+
+static minim_obj prim_add(minim_obj *args, size_t n) {
+    return fold(args, n, (num){.i = 0}, add, "+: not a number");
 }
 
 static minim_obj prim_mul(minim_obj *args, size_t n) {
-    intptr_t product = 1;
-    for (size_t i = 0; i < n; i++) {
-        intptr_t v = fixnum_arg(args[i], "*: not a fixnum");
-        // Compare magnitudes, which fit in uint64_t, before multiplying.
-        uint64_t a = product < 0 ? -(uint64_t)product : (uint64_t)product;
-        uint64_t b = v < 0 ? -(uint64_t)v : (uint64_t)v;
-        bool negative = (product < 0) != (v < 0);
-        uint64_t limit = (uint64_t)MINIM_FIXNUM_MAX + (negative ? 1 : 0);
-        if (b != 0 && a > limit / b)
-            minim_error("*: fixnum overflow", MINIM_VOID);
-        product *= v;
+    return fold(args, n, (num){.i = 1}, mul, "*: not a number");
+}
+
+static minim_obj prim_sub(minim_obj *args, size_t n) {
+    num a = num_arg(args[0], "-: not a number");
+    if (n == 1 && a.flo)
+        return minim_make_flonum(-a.d);  // not 0 - d, for -0.0
+    if (n == 1)
+        return num_result(sub((num){.i = 0}, a));
+    return fold(args + 1, n - 1, a, sub, "-: not a number");
+}
+
+static minim_obj prim_div(minim_obj *args, size_t n) {
+    num a = num_arg(args[0], "/: not a number");
+    if (n == 1)
+        return num_result(divide((num){.i = 1}, a));
+    return fold(args + 1, n - 1, a, divide, "/: not a number");
+}
+
+// Outcomes of comparing numbers, as bits.
+enum { LT = 1, EQ = 2, GT = 4, UNORDERED = 8 };
+
+static int cmp_flonums(double a, double b) {
+    return a < b ? LT : a > b ? GT : a == b ? EQ : UNORDERED;
+}
+
+// Compares exactly: `(double)a` may round, but only toward `b` if they meet,
+// and then `b` is integral and in range.
+static int cmp_mixed(intptr_t a, double b) {
+    int c = cmp_flonums((double)a, b);
+    if (c != EQ)
+        return c;
+    intptr_t i = (intptr_t)b;
+    return a < i ? LT : a > i ? GT : EQ;
+}
+
+static int cmp(num a, num b) {
+    if (!a.flo && !b.flo)
+        return a.i < b.i ? LT : a.i > b.i ? GT : EQ;
+    if (a.flo && b.flo)
+        return cmp_flonums(a.d, b.d);
+    if (!a.flo)
+        return cmp_mixed(a.i, b.d);
+    int c = cmp_mixed(b.i, a.d);
+    return c == LT ? GT : c == GT ? LT : c;
+}
+
+// Whether every adjacent pair of the numbers `args` compares as one of
+// `outcomes`; every argument is checked.
+static minim_obj compare_nums(minim_obj *args, size_t n, int outcomes, const char *msg) {
+    bool result = true;
+    num prev = num_arg(args[0], msg);
+    for (size_t i = 1; i < n; i++) {
+        num v = num_arg(args[i], msg);
+        if (!(cmp(prev, v) & outcomes))
+            result = false;
+        prev = v;
     }
-    return minim_fixnum(product);
+    return boolean(result);
+}
+
+static minim_obj prim_num_eq(minim_obj *args, size_t n) {
+    return compare_nums(args, n, EQ, "=: not a number");
+}
+
+static minim_obj prim_lt(minim_obj *args, size_t n) {
+    return compare_nums(args, n, LT, "<: not a number");
+}
+
+static minim_obj prim_gt(minim_obj *args, size_t n) {
+    return compare_nums(args, n, GT, ">: not a number");
+}
+
+static minim_obj prim_le(minim_obj *args, size_t n) {
+    return compare_nums(args, n, LT | EQ, "<=: not a number");
+}
+
+static minim_obj prim_ge(minim_obj *args, size_t n) {
+    return compare_nums(args, n, GT | EQ, ">=: not a number");
+}
+
+// Whether the number args[0] compares with 0 as one of `outcomes`.
+static minim_obj sign_test(minim_obj *args, int outcomes, const char *msg) {
+    return boolean(cmp(num_arg(args[0], msg), (num){.i = 0}) & outcomes);
+}
+
+static minim_obj prim_is_zero(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return sign_test(args, EQ, "zero?: not a number");
+}
+
+static minim_obj prim_is_positive(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return sign_test(args, GT, "positive?: not a number");
+}
+
+static minim_obj prim_is_negative(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return sign_test(args, LT, "negative?: not a number");
+}
+
+// Whether the integer args[0], a fixnum or an integral flonum, is odd.
+static bool is_odd(minim_obj *args, const char *msg) {
+    num a = num_arg(args[0], msg);
+    if (!a.flo)
+        return a.i & 1;
+    check(isfinite(a.d) && a.d == floor(a.d), msg, args[0]);
+    return fmod(a.d, 2) != 0;
+}
+
+static minim_obj prim_is_odd(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(is_odd(args, "odd?: not an integer"));
+}
+
+static minim_obj prim_is_even(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(!is_odd(args, "even?: not an integer"));
+}
+
+static minim_obj prim_abs(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "abs: not a number");
+    if (a.flo)
+        return minim_make_flonum(fabs(a.d));
+    return fixnum_result(a.i < 0 ? -a.i : a.i, "abs: fixnum overflow");
+}
+
+// The greater of `a` and `b` if `greater`, else the lesser: inexact if either
+// is, and NaN if either is.
+static num extreme(num a, num b, bool greater) {
+    int c = cmp(a, b);
+    if (c == UNORDERED)
+        return flonum(NAN);
+    num r = c == (greater ? LT : GT) ? b : a;
+    return a.flo || b.flo ? flonum(num_double(r)) : r;
+}
+
+static num maximum(num a, num b) {
+    return extreme(a, b, true);
+}
+
+static num minimum(num a, num b) {
+    return extreme(a, b, false);
+}
+
+static minim_obj prim_max(minim_obj *args, size_t n) {
+    return fold(args + 1, n - 1, num_arg(args[0], "max: not a number"), maximum,
+                "max: not a number");
+}
+
+static minim_obj prim_min(minim_obj *args, size_t n) {
+    return fold(args + 1, n - 1, num_arg(args[0], "min: not a number"), minimum,
+                "min: not a number");
 }
 
 static minim_obj prim_quotient(minim_obj *args, size_t n) {
@@ -228,26 +425,6 @@ static minim_obj prim_number_to_string(minim_obj *args, size_t n) {
     return minim_string_from_cstr(p);
 }
 
-static minim_obj prim_num_eq(minim_obj *args, size_t n) {
-    return compare(args, n, fixnum_arg, eq, "=: not a fixnum");
-}
-
-static minim_obj prim_lt(minim_obj *args, size_t n) {
-    return compare(args, n, fixnum_arg, lt, "<: not a fixnum");
-}
-
-static minim_obj prim_gt(minim_obj *args, size_t n) {
-    return compare(args, n, fixnum_arg, gt, ">: not a fixnum");
-}
-
-static minim_obj prim_le(minim_obj *args, size_t n) {
-    return compare(args, n, fixnum_arg, le, "<=: not a fixnum");
-}
-
-static minim_obj prim_ge(minim_obj *args, size_t n) {
-    return compare(args, n, fixnum_arg, ge, ">=: not a fixnum");
-}
-
 // The number the string args[0] denotes in the radix args[1], or #f if it
 // isn't one.
 static minim_obj prim_string_to_number(minim_obj *args, size_t n) {
@@ -272,15 +449,11 @@ static minim_obj prim_is_fixnum(minim_obj *args, size_t n) {
     return boolean(minim_is_fixnum(args[0]));
 }
 
-static minim_obj prim_is_zero(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    return boolean(fixnum_arg(args[0], "zero?: not a fixnum") == 0);
-}
-
 const minim_prim_def minim_number_prims[] = {
     {"+", prim_add, 0, MINIM_VARIADIC},
     {"-", prim_sub, 1, MINIM_VARIADIC},
     {"*", prim_mul, 0, MINIM_VARIADIC},
+    {"/", prim_div, 1, MINIM_VARIADIC},
     {"=", prim_num_eq, 1, MINIM_VARIADIC},
     {"<", prim_lt, 1, MINIM_VARIADIC},
     {">", prim_gt, 1, MINIM_VARIADIC},
@@ -292,5 +465,12 @@ const minim_prim_def minim_number_prims[] = {
     {"string->number", prim_string_to_number, 1, 2},
     {"fixnum?", prim_is_fixnum, 1, 1},
     {"zero?", prim_is_zero, 1, 1},
+    {"positive?", prim_is_positive, 1, 1},
+    {"negative?", prim_is_negative, 1, 1},
+    {"odd?", prim_is_odd, 1, 1},
+    {"even?", prim_is_even, 1, 1},
+    {"abs", prim_abs, 1, 1},
+    {"max", prim_max, 1, MINIM_VARIADIC},
+    {"min", prim_min, 1, MINIM_VARIADIC},
     {NULL, NULL, 0, 0},
 };

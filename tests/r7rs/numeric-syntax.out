@@ -9,10 +9,10 @@ FAIL 2363 (values z) => 1L2
 FAIL 2366 (values z) => +NAN.0
 FAIL 2368 (values z) => +InF.0
 FAIL 2370 (values z) => -iNF.0
-ERROR 2375 ("unbound variable" /)
+FAIL 2375 (values z) => 1/2
 ERROR 2376 ("bad # syntax" "#e1/2")
 FAIL 2377 (values z) => 10/2
-ERROR 2378 ("unbound variable" /)
+FAIL 2378 (values z) => -1/2
 FAIL 2379 (values z) => 0/10
 ERROR 2380 ("bad # syntax" "#e0/10")
 ERROR 2381 ("bad # syntax" "#i3/2")
@@ -55,4 +55,4 @@ FAIL 2478 (pair? ls) => #f
 FAIL 2479 (pair? ls) => #f
 FAIL 2481 (pair? ls) => #f
 FAIL 2487 (pair? ls) => #f
-Numeric syntax: 119 passed, 18 failed, 39 errors
+Numeric syntax: 121 passed, 20 failed, 37 errors
