@@ -114,6 +114,22 @@ y
 (identity 'x)
 (map identity '(1 2))
 
+; procedure-rename, after Racket's: a copy that prints with another name.
+(define (sq x) (* x x))
+(define sq2 (procedure-rename sq 'square))
+sq2
+(sq2 3)
+sq
+(procedure-rename car 'first)
+((procedure-rename car 'first) '(1 2))
+((procedure-rename apply 'app) + '(1 2))
+((procedure-rename (case-lambda ((x) 1) ((x y) 2)) 'cl) 1 2)
+(parameter? (procedure-rename (make-parameter 1) 'p))
+exact->inexact
+((procedure-rename car 'first))
+(procedure-rename 1 'x)
+(procedure-rename car "x")
+
 ; Binding names an unnamed closure; a named one keeps its name, and an
 ; argument doesn't name one.
 (define (f x) x)

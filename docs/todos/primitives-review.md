@@ -245,6 +245,29 @@ continuation and a non-procedure raising.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'numbers|boot|r7rs'
 ```
 
+**Done.**  `scheme/numbers.scm` loads after `sequences.scm`, whose `%check`
+it uses; nothing calls its procedures while the prelude loads.
+`procedure-rename` (`src/control.c`) copies a primitive with
+`minim_make_primitive` and a closure with `minim_make_closure` and
+`minim_set_closure_name`.  `abs` compares with `%fixnum-min`, the least
+fixnum, to raise `abs: fixnum overflow` as before.  `odd?` uses
+`remainder` on fixnums and, on flonums, whether `n / 2` is integral, as
+`remainder` takes only fixnums.  `max` and `min` share `%extreme`, which
+makes the result inexact at the end rather than at each step; the two
+differ only for fixnums past 2^53, which a double rounds.  A
+continuation isn't tested with `procedure-rename`: `(minim)` reaches one
+only through `call/cc`, which wraps it in a closure.  `tests/repl/core.scm`
+gained `procedure-rename`; `numbers.scm`'s output is unchanged.
+
+Benchmarks against `main`, release: the suite within noise (11 runs; fib
+0.497 to 0.507 s median, expand 0.416 to 0.421).  Microbenchmarks, 3 runs
+each:
+
+| Loop | `main` | Phase 4 | Slower |
+|---|---|---|---|
+| 1,000,000 `(zero? i)` in a countdown | 0.36 s | 0.92 s | 2.6x |
+| 1,000,000 `(max i acc 3)` | 0.57 s | 8.9 s | 15x |
+
 ### Phase 5 - Ports
 
 - `src/port.c`: `close-input-port`, `close-output-port`, and the bulk
@@ -273,6 +296,8 @@ primitive calls per element in `%copy!`'s `do` loop.  Candidates:
   primitive calls per element.
 - Fewer helper layers on the common path (`%check-range` through two
   `%check-position`s).
+- `%extreme`, behind `max` and `min`: it calls `nan?`, a closure that calls
+  `%check`, twice per argument; `(= y y)` inline would do.
 
 Measure each against the phase's start with the microbenchmarks recorded in
 Phases 2 and 3; keep what wins past noise, and record the rest here.  The

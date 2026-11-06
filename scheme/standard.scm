@@ -97,8 +97,8 @@
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
            define-library equal-hash exact->inexact filter fixnum? flonum? fold fold-right
-           gensym identity import inexact->exact mutable-string? parameter? string-hash
-           letrec-values void)))
+           gensym identity import inexact->exact mutable-string? parameter? procedure-rename
+           string-hash letrec-values void)))
 
 ;; The REPL and files see (minim), and nothing else of the system's.
 (%import! %interaction-env '((minim)))

@@ -51,6 +51,15 @@ hi
 (#<void>)
 x
 (1 2)
+#<procedure square>
+9
+#<procedure sq>
+#<procedure first>
+1
+3
+2
+#t
+#<procedure exact->inexact>
 #<procedure f>
 (#<procedure add1> #<procedure add2>)
 #<procedure f>
