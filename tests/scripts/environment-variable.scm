@@ -1,2 +1,8 @@
 (write (get-environment-variable "MINIM_TEST_VARIABLE"))
 (newline)
+(write (assoc "MINIM_TEST_VARIABLE" (get-environment-variables)))
+(newline)
+(write (let loop ((env (get-environment-variables)))
+         (or (null? env)
+             (and (string? (caar env)) (string? (cdar env)) (loop (cdr env))))))
+(newline)

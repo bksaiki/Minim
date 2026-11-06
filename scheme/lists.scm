@@ -22,6 +22,20 @@
   (lambda (lst k)
     (car (list-tail lst k))))
 
+(define list-set!
+  (lambda (lst k x)
+    (set-car! (list-tail lst k) x)))
+
+;; A new list of `k` elements, each `fill`, by default #f.
+(define make-list
+  (case-lambda
+    ((k) (make-list k #f))
+    ((k fill)
+     (when (< k 0)
+       (error "make-list: bad length" k))
+     (let loop ((k k) (acc '()))
+       (if (= k 0) acc (loop (- k 1) (cons fill acc)))))))
+
 ;; Copies the pairs of `lst`; an improper tail is kept.
 (define list-copy
   (lambda (lst)

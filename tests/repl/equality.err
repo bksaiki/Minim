@@ -1,0 +1,2 @@
+error: boolean=?: not a boolean: 1
+error: symbol=?: not a symbol: "a"

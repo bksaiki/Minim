@@ -1,4 +1,4 @@
-# Misc: `make-list`, `list-set!`, `boolean=?`, `symbol=?`, `get-environment-variables`
+# Misc: five small procedures, and optional arguments by `case-lambda`
 
 Implementation plan.  The design is settled; what follows is the phase
 breakdown, one phase per commit.
@@ -78,6 +78,45 @@ strings.  The 6.3, 6.4, 6.5, 6.10, and 6.14 reports updated.
 
 ```sh
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'lists|equality|environment|r7rs' && ctest --preset stress -R 'lists|equality'
+```
+
+**Done.**  6.3 and 6.5 pass completely (18, 17); 6.4: 61 to 63; 6.10: 29
+to 30; 6.14: 5 to 7, its error gone.  `make-list` is a `case-lambda`, so
+extra arguments are an arity error, and raises `make-list: bad length` on a
+negative length, which would otherwise loop.  `get-environment-variables`
+splits each entry at its first `=` after the first char, so Windows'
+per-drive entries (`=C:=C:\`) keep their name.  `equality` gained a `.err`
+file, since it now has error cases.
+
+### Phase 2 - Optional arguments by `case-lambda`
+
+The prelude's procedures with optional arguments take them by `case-lambda`,
+as `make-list` now does, except four that take them through a rest
+parameter, so extra arguments are ignored or blamed on an internal
+primitive:
+
+| Procedure | File | Today, with an extra argument |
+|---|---|---|
+| `member`, `assoc` | `scheme/lists.scm` | ignored: `(member 1 '(1) eq? 'x)` is `(1)` |
+| `read-bytevector!`, `write-bytevector` | `scheme/ports.scm` | `arity mismatch: #<procedure %write-bytevector>` |
+
+- `scheme/lists.scm`: `member` and `assoc` as `case-lambda`s, the
+  two-argument clause passing `equal?`.
+- `scheme/ports.scm`: `read-bytevector!` and `write-bytevector` with a clause
+  per arity, as `write-string`.  `scheme/prelude.boot` regenerated.
+
+The rest stay: `append`, `map`, `for-each`, the `-map` and `-for-each`
+procedures, `error`, and `environment` take any number of arguments.
+
+Separate because it changes existing procedures' errors, not Phase 1's.
+
+Tests: `tests/repl/lists.scm`: `member` and `assoc` with and without
+`compare`, and with an extra argument's arity error;
+`tests/repl/ports.scm`: `read-bytevector!` and `write-bytevector` with an
+extra argument, the error naming them.
+
+```sh
+cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'lists|ports|r7rs' && ctest --preset stress -R 'lists|ports'
 ```
 
 ### After the last phase

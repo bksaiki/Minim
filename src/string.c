@@ -11,6 +11,16 @@ static minim_obj prim_is_symbol(minim_obj *args, size_t n) {
     return boolean(minim_is_symbol(args[0]));
 }
 
+// The symbol `x`, as a key for compare; raises `msg` otherwise.
+static intptr_t symbol_key(minim_obj x, const char *msg) {
+    check(minim_is_symbol(x), msg, x);
+    return (intptr_t)x;
+}
+
+static minim_obj prim_symbol_eq(minim_obj *args, size_t n) {
+    return compare(args, n, symbol_key, eq, "symbol=?: not a symbol");
+}
+
 static minim_obj prim_string_length(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "string-length: not a string", args[0]);
@@ -317,6 +327,7 @@ static minim_obj prim_putprop(minim_obj *args, size_t n) {
 
 const minim_prim_def minim_string_prims[] = {
     {"symbol?", prim_is_symbol, 1, 1},
+    {"symbol=?", prim_symbol_eq, 1, MINIM_VARIADIC},
     {"string-length", prim_string_length, 1, 1},
     {"string-ref", prim_string_ref, 2, 2},
     {"string?", prim_is_string, 1, 1},

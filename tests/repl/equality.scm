@@ -36,3 +36,15 @@
 (equal? '(#u8(255)) '(#u8(255)))
 (= (equal-hash #u8(1 2)) (equal-hash #u8(1 2)))
 (eq? #u8(1) #u8(1))
+
+; boolean=? and symbol=?: by identity, of one or more arguments.
+(boolean=? #t #t)
+(boolean=? #f #f #f)
+(boolean=? #t #f)
+(boolean=? #f #f #t)
+(symbol=? 'a 'a)
+(symbol=? 'a 'a 'a)
+(symbol=? 'a 'A)
+(symbol=? 'a (string->symbol "a"))
+(boolean=? #t 1)
+(symbol=? 'a "a")

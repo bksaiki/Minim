@@ -14,6 +14,9 @@
  */
 const char *minim_getenv(const char *name);
 
+/** The environment, `NAME=value` entries ending with NULL, as POSIX's `environ`. */
+char **minim_environ(void);
+
 /** The file `path` opened with `mode`, as fopen, or NULL; fopen_s on MSVC. */
 FILE *minim_fopen(const char *path, const char *mode);
 

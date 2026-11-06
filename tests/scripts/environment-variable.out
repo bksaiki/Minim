@@ -1,1 +1,3 @@
 "set by the test"
+("MINIM_TEST_VARIABLE" . "set by the test")
+#t
