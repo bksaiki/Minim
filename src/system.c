@@ -49,7 +49,10 @@ const char *minim_getenv(const char *name) {
     return s == NULL || *s == '\0' ? NULL : s;
 }
 
-uint64_t minim_monotonic_ns(void) {
+enum { NS_PER_SECOND = 1000000000 };
+
+// Nanoseconds on a monotonic clock, from an arbitrary origin.
+static uint64_t monotonic_ns(void) {
 #ifdef _WIN32
     LARGE_INTEGER count;
     LARGE_INTEGER freq;
@@ -57,18 +60,18 @@ uint64_t minim_monotonic_ns(void) {
     QueryPerformanceFrequency(&freq);
     uint64_t c = (uint64_t)count.QuadPart;
     uint64_t f = (uint64_t)freq.QuadPart;
-    return c / f * 1000000000 + c % f * 1000000000 / f;  // without overflowing c * 1e9
+    return c / f * NS_PER_SECOND + c % f * NS_PER_SECOND / f;  // without overflowing c * 1e9
 #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000000 + (uint64_t)ts.tv_nsec;
+    return (uint64_t)ts.tv_sec * NS_PER_SECOND + (uint64_t)ts.tv_nsec;
 #endif
 }
 
 static uint64_t start_ns;
 
 void minim_clock_init(void) {
-    start_ns = minim_monotonic_ns();
+    start_ns = monotonic_ns();
 }
 
 // Seconds since the epoch, UTC.
@@ -82,12 +85,12 @@ static minim_obj prim_current_second(minim_obj *args, size_t n) {
 // Nanoseconds since minim_clock_init.
 static minim_obj prim_current_jiffy(minim_obj *args, size_t n) {
     MINIM_UNUSED(args, n);
-    return minim_fixnum((intptr_t)(minim_monotonic_ns() - start_ns));
+    return minim_fixnum((intptr_t)(monotonic_ns() - start_ns));
 }
 
 static minim_obj prim_jiffies_per_second(minim_obj *args, size_t n) {
     MINIM_UNUSED(args, n);
-    return minim_fixnum(1000000000);
+    return minim_fixnum(NS_PER_SECOND);
 }
 
 static minim_obj prim_collect(minim_obj *args, size_t n) {

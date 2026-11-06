@@ -6,7 +6,6 @@
 #ifndef MINIM_SYSTEM_H
 #define MINIM_SYSTEM_H
 
-#include <stdint.h>
 #include <stdio.h>
 
 /**
@@ -20,9 +19,6 @@ char **minim_environ(void);
 
 /** The file `path` opened with `mode`, as fopen, or NULL; fopen_s on MSVC. */
 FILE *minim_fopen(const char *path, const char *mode);
-
-/** Nanoseconds on a monotonic clock, from an arbitrary origin. */
-uint64_t minim_monotonic_ns(void);
 
 /** Records the start time, from which `current-jiffy` counts. */
 void minim_clock_init(void);
