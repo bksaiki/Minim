@@ -1,6 +1,5 @@
 FAIL 1671 (call-with-values (lambda () ((compose exact-integer-sqrt *) 12 75)) list) raised ("unbound variable" exact-integer-sqrt)
 FAIL 1677 (map (lambda (n) (expt n n)) '(1 2 3 4 5)) raised ("unbound variable" expt)
 FAIL 1711 (vector-map (lambda (n) (expt n n)) '#(1 2 3 4 5)) raised ("unbound variable" expt)
-FAIL 1749 (let ((v (make-list 5))) (vector-for-each (lambda (i) (list-set! v i (* i i))) '#(0 1 2 3 4)) v) raised ("unbound variable" make-list)
 FAIL 1755 (call-with-current-continuation (lambda (exit) (for-each (lambda (x) (if (negative? x) (exit x))) '(54 0 37 -3 245 19)) #t)) raised ("unbound variable" negative?)
-6.10 Control Features: 29 passed, 5 failed, 0 errors
+6.10 Control Features: 30 passed, 4 failed, 0 errors

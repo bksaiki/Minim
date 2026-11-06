@@ -22,6 +22,20 @@
   (lambda (lst k)
     (car (list-tail lst k))))
 
+(define list-set!
+  (lambda (lst k x)
+    (set-car! (list-tail lst k) x)))
+
+;; A new list of `k` elements, each `fill`, by default #f.
+(define make-list
+  (case-lambda
+    ((k) (make-list k #f))
+    ((k fill)
+     (when (< k 0)
+       (error "make-list: bad length" k))
+     (let loop ((k k) (acc '()))
+       (if (= k 0) acc (loop (- k 1) (cons fill acc)))))))
+
 ;; Copies the pairs of `lst`; an improper tail is kept.
 (define list-copy
   (lambda (lst)
@@ -47,14 +61,16 @@
             ((null? (cdr lists)) (car lists))
             (else (append2 (car lists) (loop (cdr lists))))))))
 
-;; The first pair of `lst` whose car matches `x` under `same?`, or #f.
+;; The first pair of `lst` whose car matches `x` under `same?`, by default
+;; `equal?`, or #f.
 (define member
-  (lambda (x lst . compare)
-    (let ((same? (if (null? compare) equal? (car compare))))
-      (let loop ((lst lst))
-        (cond ((null? lst) #f)
-              ((same? x (car lst)) lst)
-              (else (loop (cdr lst))))))))
+  (case-lambda
+    ((x lst) (member x lst equal?))
+    ((x lst same?)
+     (let loop ((lst lst))
+       (cond ((null? lst) #f)
+             ((same? x (car lst)) lst)
+             (else (loop (cdr lst))))))))
 
 (define memq
   (lambda (x lst) (member x lst eq?)))
@@ -62,14 +78,16 @@
 (define memv
   (lambda (x lst) (member x lst eqv?)))
 
-;; The first pair of `alist` whose car matches `x` under `same?`, or #f.
+;; The first pair of `alist` whose car matches `x` under `same?`, by default
+;; `equal?`, or #f.
 (define assoc
-  (lambda (x alist . compare)
-    (let ((same? (if (null? compare) equal? (car compare))))
-      (let loop ((alist alist))
-        (cond ((null? alist) #f)
-              ((same? x (caar alist)) (car alist))
-              (else (loop (cdr alist))))))))
+  (case-lambda
+    ((x alist) (assoc x alist equal?))
+    ((x alist same?)
+     (let loop ((alist alist))
+       (cond ((null? alist) #f)
+             ((same? x (caar alist)) (car alist))
+             (else (loop (cdr alist))))))))
 
 (define assq
   (lambda (x alist) (assoc x alist eq?)))

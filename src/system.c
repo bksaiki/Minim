@@ -23,6 +23,20 @@ FILE *minim_fopen(const char *path, const char *mode) {
 #endif
 }
 
+#ifndef _MSC_VER
+extern char **environ;  // POSIX, though no standard header declares it
+#endif
+
+char **minim_environ(void) {
+#ifdef _MSC_VER
+    char **env;
+    _get_environ(&env);
+    return env;
+#else
+    return environ;
+#endif
+}
+
 const char *minim_getenv(const char *name) {
     const char *s = getenv(name);
     return s == NULL || *s == '\0' ? NULL : s;
@@ -128,6 +142,31 @@ static minim_obj prim_get_environment_variable(minim_obj *args, size_t n) {
     return value == NULL ? MINIM_FALSE : minim_string_from_cstr(value);
 }
 
+// The environment, as a list of `(name . value)` strings.  A name may start
+// with `=`, as Windows' per-drive directories do.
+static minim_obj prim_get_environment_variables(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    minim_obj lst = MINIM_NIL;
+    minim_obj name = MINIM_NIL;
+    minim_obj value = MINIM_NIL;
+    MINIM_FRAME(&lst, &name, &value);
+    char **env = minim_environ();
+    size_t count = 0;
+    while (env[count] != NULL)
+        count++;
+    for (size_t i = count; i > 0; i--) {
+        const char *entry = env[i - 1];
+        const char *sep = entry[0] == '\0' ? NULL : strchr(entry + 1, '=');
+        if (sep == NULL)
+            continue;
+        name = minim_string_from_utf8(entry, (size_t)(sep - entry));
+        value = minim_string_from_cstr(sep + 1);
+        value = minim_cons(name, value);
+        lst = minim_cons(value, lst);
+    }
+    MINIM_RETURN(lst);
+}
+
 // The forms of the file `args[0]`, as `load` reads them.
 static minim_obj prim_read_file(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
@@ -141,6 +180,7 @@ const minim_prim_def minim_system_prims[] = {
     {"command-line", prim_command_line, 0, 0},
     {"%exit", prim_exit, 1, 1},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
+    {"get-environment-variables", prim_get_environment_variables, 0, 0},
     {"%read-file", prim_read_file, 1, 1},
     {"collect", prim_collect, 0, 0},
     {"collect-nursery-bytes", prim_collect_nursery_bytes, 0, 1},

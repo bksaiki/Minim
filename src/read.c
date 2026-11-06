@@ -78,7 +78,7 @@ static int32_t next(source *in) {
     if (*in->str == '\0')
         return -1;
     uint32_t c;
-    in->str += minim_utf8_decode(in->str, &c);
+    in->str += minim_utf8_decode(in->str, SIZE_MAX, &c);
     return (int32_t)c;
 }
 

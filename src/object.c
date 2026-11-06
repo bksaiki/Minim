@@ -142,16 +142,20 @@ minim_obj minim_make_error_object(minim_error_kind kind, minim_obj message, mini
     MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 
-minim_obj minim_string_from_cstr(const char *s) {
+minim_obj minim_string_from_utf8(const char *s, size_t n) {
     const unsigned char *u = (const unsigned char *)s;
     uint32_t c;
-    size_t n = 0;
-    for (const unsigned char *p = u; *p != '\0'; p += minim_utf8_decode(p, &c))
-        n++;
+    size_t count = 0;
+    for (size_t i = 0; i < n; count++)
+        i += minim_utf8_decode(u + i, n - i, &c);
 
-    minim_obj str = minim_make_string(n, 0);
+    minim_obj str = minim_make_string(count, 0);
     uint32_t *chars = minim_string_chars(str);
-    for (const unsigned char *p = u; *p != '\0'; chars++)
-        p += minim_utf8_decode(p, chars);
+    for (size_t i = 0; i < n;)
+        i += minim_utf8_decode(u + i, n - i, chars++);
     return str;
+}
+
+minim_obj minim_string_from_cstr(const char *s) {
+    return minim_string_from_utf8(s, strlen(s));
 }

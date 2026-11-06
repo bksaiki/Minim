@@ -3,10 +3,7 @@
  * Bytevectors.
  */
 
-#include <stdlib.h>
-
 #include "char.h"
-#include "heap.h"
 #include "prims.h"
 
 static minim_obj prim_bytevector(minim_obj *args, size_t n) {
@@ -101,23 +98,18 @@ static minim_obj prim_utf8_to_string(minim_obj *args, size_t n) {
     check(minim_is_bytevector(args[0]), "utf8->string: not a bytevector", args[0]);
     range r = range_args(args, n, 1, minim_bytevector_length(args[0]),
                          "utf8->string: bad index");
-    // A NUL-terminated copy, which minim_utf8_decode needs and allocation can't move.
     size_t len = r.end - r.start;
-    unsigned char *bytes = malloc(len + 1);
-    if (bytes == NULL)
-        minim_out_of_memory();
-    memcpy(bytes, minim_bytevector_data(args[0]) + r.start, len);
-    bytes[len] = '\0';
-
+    const uint8_t *bytes = minim_bytevector_data(args[0]) + r.start;
     uint32_t c;
     size_t count = 0;
     for (size_t i = 0; i < len; count++)
-        i += minim_utf8_decode(bytes + i, &c);
+        i += minim_utf8_decode(bytes + i, len - i, &c);
+
     minim_obj s = minim_make_string(count, 0);
+    bytes = minim_bytevector_data(args[0]) + r.start;  // the allocation may have moved it
     uint32_t *out = minim_string_chars(s);
     for (size_t i = 0; i < len;)
-        i += minim_utf8_decode(bytes + i, out++);
-    free(bytes);
+        i += minim_utf8_decode(bytes + i, len - i, out++);
     return s;
 }
 

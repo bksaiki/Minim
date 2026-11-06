@@ -65,13 +65,17 @@
 (define read-bytevector!
   (case-lambda
     ((bv) (%read-bytevector! bv (current-input-port)))
-    ((bv port . range) (apply %read-bytevector! bv port range))))
+    ((bv port) (%read-bytevector! bv port))
+    ((bv port start) (%read-bytevector! bv port start))
+    ((bv port start end) (%read-bytevector! bv port start end))))
 
 ;; Writes `bv`, or its bytes from `start` to `end`, to `port`.
 (define write-bytevector
   (case-lambda
     ((bv) (%write-bytevector bv (current-output-port)))
-    ((bv port . range) (apply %write-bytevector bv port range))))
+    ((bv port) (%write-bytevector bv port))
+    ((bv port start) (%write-bytevector bv port start))
+    ((bv port start end) (%write-bytevector bv port start end))))
 
 (define newline
   (case-lambda

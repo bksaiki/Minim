@@ -35,6 +35,7 @@ c
 (utf8->string #u8(65 0 66))
 (utf8->string #u8(65 66 67) 1)
 (utf8->string #u8(206 187 206 187) 2 4)
+(char->integer (string-ref (utf8->string #u8(206 187) 0 1) 0))
 (map char->integer (string->list (utf8->string #u8(255 206 65 226 130))))
 (equal? (utf8->string (string->utf8 "round \x1F600; trip")) "round \x1F600; trip")
 

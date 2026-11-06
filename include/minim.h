@@ -440,7 +440,10 @@ static inline void minim_vector_set(minim_obj v, size_t i, minim_obj x) {
 /** New string of length `n` with every char `c`. */
 minim_obj minim_make_string(size_t n, uint32_t c);
 
-/** New string from UTF-8; invalid bytes become U+FFFD. */
+/** New string from the `n` bytes of UTF-8 at `s`, outside the heap; invalid bytes become U+FFFD. */
+minim_obj minim_string_from_utf8(const char *s, size_t n);
+
+/** New string from the NUL-terminated UTF-8 `s`, as minim_string_from_utf8. */
 minim_obj minim_string_from_cstr(const char *s);
 
 /** Length of the string `s`. */

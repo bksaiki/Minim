@@ -95,3 +95,19 @@ p
 (define d (list 1 2))
 (set-cdr! (cdr d) d)
 (list? d)
+
+; make-list, filled with #f by default, and list-set!.
+(make-list 3)
+(make-list 2 'x)
+(make-list 0)
+(define e (list 1 2 3))
+(list-set! e 1 'b)
+e
+(list-set! e 2 '(c))
+e
+(make-list -1)
+(make-list 'a)
+(make-list 1 2 3)
+(list-set! e 3 'x)
+(member 1 '(1) eq? 'x)
+(assoc 1 '((1)) eq? 'x)

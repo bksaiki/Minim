@@ -31,7 +31,7 @@ provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 192 | 238 | |
+| `(scheme base)` | 196 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 22 | 22 | |
 | `(scheme complex)` | 0 | 6 | not defined |
@@ -41,7 +41,7 @@ provides.  Update it as names are added.
 | `(scheme inexact)` | 0 | 12 | not defined |
 | `(scheme lazy)` | 0 | 5 | not defined |
 | `(scheme load)` | 1 | 1 | |
-| `(scheme process-context)` | 4 | 5 | |
+| `(scheme process-context)` | 5 | 5 | |
 | `(scheme r5rs)` | 169 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
@@ -209,8 +209,11 @@ strings, vectors, and control.  Mostly prelude procedures.
 - Done: `(scheme base)`'s vectors: `vector-copy`, `vector-copy!`,
   `vector-fill!`, `vector-append`, `string->vector`, `vector->string`,
   `vector-map`, and `vector-for-each`.
+- Done: `make-list`, `list-set!`, `boolean=?`, `symbol=?`, and
+  `get-environment-variables`.
 - Planned: `(scheme lazy)` (`docs/todos/lazy.md`); flonums
-  (`docs/todos/flonums.md`, milestone 7).
+  (`docs/todos/flonums.md`, milestone 7), then `(scheme time)`
+  (`docs/todos/time.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -229,20 +232,20 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
 | 6.2 Numbers | 24 | 120 | 76 |
-| 6.3 Booleans | 13 | 5 | 0 |
-| 6.4 Lists | 61 | 4 | 0 |
-| 6.5 Symbols | 13 | 4 | 0 |
+| 6.3 Booleans | 18 | 0 | 0 |
+| 6.4 Lists | 63 | 2 | 0 |
+| 6.5 Symbols | 17 | 0 | 0 |
 | 6.6 Characters | 79 | 0 | 0 |
 | 6.7 Strings | 130 | 0 | 0 |
 | 6.8 Vectors | 42 | 1 | 0 |
 | 6.9 Bytevectors | 31 | 0 | 8 |
-| 6.10 Control Features | 29 | 5 | 0 |
+| 6.10 Control Features | 30 | 4 | 0 |
 | 6.11 Exceptions | 24 | 6 | 0 |
 | 6.12 Environments and evaluation | 1 | 1 | 2 |
 | 6.13 Input and output | 61 | 1 | 0 |
 | Read syntax | 78 | 6 | 9 |
 | Numeric syntax | 8 | 2 | 105 |
-| 6.14 System interface | 5 | 6 | 1 |
+| 6.14 System interface | 7 | 6 | 0 |
 | **Total** | 490 | 378 | 255 |
 
 The reports name each failing test by line; the gaps are those of the
