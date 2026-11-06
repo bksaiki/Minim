@@ -15,6 +15,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `eval.scm` | `eval`, its environments, and `%expand` |
 | `ports.scm` | the current ports, and the port procedures with optional ports (`ports.md`) |
 | `sequences.scm` | the higher-order procedures of strings and vectors |
+| `lazy.scm` | promises: `delay`, `delay-force`, `force`, `make-promise`, `promise?` |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
 The library holds what is easiest in Scheme, above all higher-order
@@ -117,6 +118,13 @@ through a private token.
 each field's index once, when the definition runs.  An accessor or modifier
 checks the type with `%record?`, then reads or sets the field, raising
 `name: not a type` with the record as the irritant otherwise.
+
+Promises (R7RS 4.2.5) follow R7RS 7.3's reference implementation.  A
+promise is a record holding a box, `(done? . value)`: its value once forced,
+else a thunk returning a promise.  `force` calls the thunk and, unless a
+reentrant `force` finished the promise meanwhile, makes it share the box of
+the promise returned, then loops, so a chain of `delay-force`s collapses
+into one box and runs in constant space.  `force` of a non-promise raises.
 
 Prelude procedures print with their names, as in `arity mismatch:
 #<procedure read-char>`.  Errors inside them come from the primitives they call, except those of

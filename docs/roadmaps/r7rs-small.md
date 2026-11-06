@@ -39,10 +39,10 @@ provides.  Update it as names are added.
 | `(scheme eval)` | 2 | 2 | |
 | `(scheme file)` | 10 | 10 | |
 | `(scheme inexact)` | 0 | 12 | not defined |
-| `(scheme lazy)` | 0 | 5 | not defined |
+| `(scheme lazy)` | 5 | 5 | |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 5 | 5 | |
-| `(scheme r5rs)` | 169 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 171 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
@@ -211,9 +211,10 @@ strings, vectors, and control.  Mostly prelude procedures.
   `vector-map`, and `vector-for-each`.
 - Done: `make-list`, `list-set!`, `boolean=?`, `symbol=?`, and
   `get-environment-variables`.
-- Planned: `(scheme lazy)` (`docs/todos/lazy.md`); flonums
-  (`docs/todos/flonums.md`, milestone 7), then `(scheme time)`
-  (`docs/todos/time.md`).
+- Done: `(scheme lazy)`, promises after R7RS 7.3
+  (`docs/design/prelude.md`).
+- Planned: flonums (`docs/todos/flonums.md`, milestone 7), then `(scheme
+  time)` (`docs/todos/time.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -227,7 +228,7 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | Section | Passed | Failed | Errors |
 |---|---|---|---|
 | 4.1 Primitive expression types | 27 | 0 | 0 |
-| 4.2 Derived expression types | 45 | 18 | 9 |
+| 4.2 Derived expression types | 56 | 9 | 7 |
 | 4.3 Macros | 23 | 2 | 1 |
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
