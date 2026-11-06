@@ -19,7 +19,9 @@ them (`MINIM_SCHEME_SOURCES`):
 
 The library holds what is easiest in Scheme, above all higher-order
 procedures, which primitives can't express because they can't call closures
-(see `primitives.md`).
+(see `primitives.md`).  A procedure with optional arguments takes them by
+`case-lambda`, so an extra argument is an arity error naming it; a rest
+parameter is only for any number of arguments.
 
 ## The boot file
 
@@ -66,6 +68,8 @@ the one it contains.
 | `(append lst ...)` | the lists joined; all but the last are copied, the last is shared |
 | `(reverse lst)` | a new list in reverse order |
 | `(list-tail lst k)`, `(list-ref lst k)` | the `k`th tail, or element |
+| `(list-set! lst k x)` | sets the `k`th element; void |
+| `(make-list k [fill])` | a new list of `k` elements, each `fill` (default `#f`) |
 | `(list-copy lst)` | a copy of the pairs of `lst`; an improper tail is kept |
 | `(memq x lst)`, `(memv x lst)`, `(member x lst [compare])` | the first tail whose car matches `x` by `eq?`, `eqv?`, or `compare` (default `equal?`); `#f` if none |
 | `(assq x alist)`, `(assv x alist)`, `(assoc x alist [compare])` | the first pair whose car matches `x`, likewise; `#f` if none |
