@@ -63,6 +63,8 @@ u
 (string->vector 'abc)
 (vector->string #(#\a 1))
 (vector->string #(#\a 1) 0 1)
+(vector-copy! 'x 0 'y)
+(vector->string "abc" 0)
 
 ; Mapping over elements, to the shortest vector's length.
 (vector-map car #((a 1) (b 2)))

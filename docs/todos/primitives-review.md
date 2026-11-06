@@ -202,6 +202,27 @@ Tests: the existing `vectors` and `bytevectors` REPL tests.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'vectors|bytevectors|boot|r7rs'
 ```
 
+**Done.**  `expander.scm` calls `vector` while the prelude loads, so
+`sequences.scm` moved to right after `lists.scm`, and Phase 2's
+`strings.scm` folded into it: strings, vectors, bytevectors, and their
+higher-order procedures.  Their shared helpers take the type's procedures
+as arguments: `%copy!` (overlap-safe, and across types, for
+`string->vector` and `vector->string`), `%subsequence`, `%append`, and the
+checked `%copy`, `%copy-to!`, and `%fill!`.  The string procedures now use
+them; `%length-or-0` takes the type's predicate and length.
+`tests/repl/vectors.scm` and `bytevectors.scm` gained argument-order
+errors; the rest of their output is unchanged.
+
+Benchmarks against `main`, release: the suite within noise (11 runs;
+expand 0.417 to 0.431 s median, 0.391 to 0.398 minimum, from `vector` in
+`%make-top`).  Microbenchmarks, 3 runs each:
+
+| Loop | `main` | Phase 3 | Slower |
+|---|---|---|---|
+| 1,000,000 `(vector 1 2 3)` | 0.61 s | 0.80 s | 1.3x |
+| 1,000 `vector-copy` of 1,000 elements | 0.01 s | 1.1 s | 100x |
+| 200,000 `(bytevector-append #u8(1 2 3) #u8(4 5))` | 0.12 s | 3.5 s | 30x |
+
 ### Phase 4 - Numbers, and `procedure-rename`
 
 - `src/number.c`: `finite?`, `infinite?`, `nan?`, the sign tests,
@@ -235,6 +256,34 @@ Tests: the existing `ports` REPL test and `test_port`.
 
 ```sh
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'ports|port|boot|r7rs'
+```
+
+### Phase 6 - Investigate the moved procedures' overhead
+
+An investigation, not a fixed change: Phases 2 to 5 accept the moved
+procedures' cost (Settled in review), and this phase looks for what is cheap
+to win back without returning to C.  `(vector-copy v)` of n elements makes
+about 10 closure calls of fixed overhead, then a closure call and 6
+primitive calls per element in `%copy!`'s `do` loop.  Candidates:
+
+- Short `case-lambda` clauses calling the checked helper (`%copy`,
+  `%fill!`, ...) directly, not re-entering the procedure to fill in a
+  default.
+- `%copy!` looping over one index with a running offset, saving two
+  primitive calls per element.
+- Fewer helper layers on the common path (`%check-range` through two
+  `%check-position`s).
+
+Measure each against the phase's start with the microbenchmarks recorded in
+Phases 2 and 3; keep what wins past noise, and record the rest here.  The
+per-element closure call stays, so most of the gap to C remains; closing it
+is `compile.md`'s lexical addressing, or C, where a program needs it.
+
+Tests: the existing `strings`, `vectors`, and `bytevectors` REPL tests,
+unchanged.
+
+```sh
+cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'strings|vectors|bytevectors|boot|r7rs'
 ```
 
 ### After the last phase
