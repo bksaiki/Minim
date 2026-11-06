@@ -16,12 +16,19 @@ and advances it.
 | `(a b)`, `(a . b)`, `()` | lists, dotted pairs, the empty list |
 | `#(a b)` | vector |
 | `#u8(0 255)` | bytevector, of fixnums 0 to 255 |
-| `42`, `-7`, `+5` | fixnum; out-of-range literals are errors |
+| `42`, `-7`, `+5`, `#xff`, `#e1e3` | fixnum; out-of-range literals are errors |
+| `1.5`, `.5`, `1e10`, `#i3`, `+inf.0`, `-inf.0`, `+nan.0` | flonum |
 | `"..."` | string, with `\"`, `\\`, `\|`, `\a`, `\b`, `\n`, `\r`, `\t`, and `\xHH;` escapes, and line continuations (`\`, then a line ending, between intraline white space) |
 | `#\a`, `#\space`, `#\xHH`; R7RS's names (`#\null`, `#\alarm`, ...) and Chez's `#\nul` | char |
 | `#t`, `#f`, `#true`, `#false` | boolean |
 | `'x`, `` `x ``, `,x`, `,@x` | `(quote x)`, `(quasiquote x)`, `(unquote x)`, `(unquote-splicing x)`; whitespace may follow, but `,@` is one token |
-| anything else up to a delimiter | symbol (case-sensitive), including `+`, `-`, `...`, and `1.5` |
+| anything else up to a delimiter | symbol (case-sensitive), including `+`, `-`, `...`, and `1/2` |
+
+A number may start with a radix prefix, `#x` `#o` `#b` `#d`, and an
+exactness prefix, `#e` `#i`, in either order; decimals are radix 10 only, and
+`#e` of a non-integer is an error, there being no rationals.
+`minim_parse_number` (`src/number.h`) parses numbers for the reader and
+`string->number`; decimals go through `strtod`, which rounds correctly.
 
 Delimiters are whitespace, `(`, `)`, `"`, and `;`.  `;` starts a comment that
 runs to the end of the line, `#|` one to the matching `|#`, nesting, and
@@ -40,6 +47,7 @@ walks `x`, so `minim_write` is safe on error paths.
 | Value | Printed |
 |---|---|
 | fixnum | decimal |
+| flonum | the fewest digits that read back as it: `100.0`, `0.001`, `1e21`, `1.5e-7` (positional for exponents -6 to 20), `-0.0`, `+inf.0`, `+nan.0` |
 | `#t` / `#f`, `'()` | `#t` / `#f`, `()` |
 | void / eof / unbound | `#<void>` / `#<eof>` / `#<unbound>` |
 | char | `#\a`; R7RS's named chars by name (`#\null`, `#\delete`, ...); other control chars as `#\x1` |

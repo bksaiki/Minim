@@ -7,7 +7,7 @@ doesn't require is in `beyond-r7rs.md`.
 
 ## Where things stand
 
-Minim has fixnums, chars, booleans, pairs, vectors, strings, bytevectors,
+Minim has fixnums, flonums, chars, booleans, pairs, vectors, strings, bytevectors,
 symbols, closures, continuations, error objects, records, textual and binary
 ports, and a Scheme
 prelude with the list library (`map`, `append`, `member`, `fold`, ...),
@@ -24,25 +24,25 @@ Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Numbers | flonums, bignums, rationals |
+| Numbers | bignums, rationals, the math functions (`sqrt`, `expt`, `exp`, ...), and integer division (`modulo`, `floor/`, ...) |
 
 **Coverage:** the names of each standard library (R7RS Appendix A) Minim
 provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 196 | 238 | |
+| `(scheme base)` | 219 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 22 | 22 | |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 24 | 24 | |
 | `(scheme eval)` | 2 | 2 | |
 | `(scheme file)` | 10 | 10 | |
-| `(scheme inexact)` | 0 | 12 | not defined |
+| `(scheme inexact)` | 3 | 12 | `finite?`, `infinite?`, `nan?` |
 | `(scheme lazy)` | 5 | 5 | |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 5 | 5 | |
-| `(scheme r5rs)` | 171 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 193 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 0 | 3 | not defined |
@@ -165,13 +165,14 @@ libraries exist.
 
 ### 7. Numbers (L)
 
-- Flonums: boxed doubles on primary tag `010` (reserved for this).  Reading,
-  printing (shortest round-trip), arithmetic, and `exact` / `inexact`.
+- Done: flonums, boxed doubles on primary tag `010`: reading, printing
+  (shortest round-trip), generic arithmetic and comparison, `eqv?`, and
+  `exact` / `inexact` (`docs/design/primitives.md`).
+- The math functions of `(scheme base)` and `(scheme inexact)`, and integer
+  division (`modulo`, `floor/`, `truncate/`, `exact-integer-sqrt`, ...).
 - Bignums: typed objects holding digits.  Fixnum overflow promotes instead of
   raising.
 - Rationals: optional, after bignums.
-- Generic arithmetic dispatches on the operand types; the fixnum fast path
-  stays inline.
 
 Can start any time after 1; the order is flexible.  The main decision is
 hand-written bignums or GMP (see Open items).
@@ -213,8 +214,7 @@ strings, vectors, and control.  Mostly prelude procedures.
   `get-environment-variables`.
 - Done: `(scheme lazy)`, promises after R7RS 7.3
   (`docs/design/prelude.md`).
-- Planned: flonums (`docs/todos/flonums.md`, milestone 7), then `(scheme
-  time)` (`docs/todos/time.md`).
+- Planned: `(scheme time)` (`docs/todos/time.md`).
 - Cycles: `write` with datum labels for cycles, `write-shared` for all
   sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
   data.  The printer and `equal?` loop on cycles today.
@@ -228,26 +228,26 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | Section | Passed | Failed | Errors |
 |---|---|---|---|
 | 4.1 Primitive expression types | 27 | 0 | 0 |
-| 4.2 Derived expression types | 56 | 9 | 7 |
-| 4.3 Macros | 23 | 2 | 1 |
+| 4.2 Derived expression types | 61 | 4 | 6 |
+| 4.3 Macros | 24 | 1 | 1 |
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
-| 6.2 Numbers | 24 | 120 | 76 |
+| 6.2 Numbers | 110 | 92 | 17 |
 | 6.3 Booleans | 18 | 0 | 0 |
-| 6.4 Lists | 63 | 2 | 0 |
+| 6.4 Lists | 65 | 0 | 0 |
 | 6.5 Symbols | 17 | 0 | 0 |
 | 6.6 Characters | 79 | 0 | 0 |
 | 6.7 Strings | 130 | 0 | 0 |
 | 6.8 Vectors | 42 | 1 | 0 |
-| 6.9 Bytevectors | 31 | 0 | 8 |
-| 6.10 Control Features | 30 | 4 | 0 |
-| 6.11 Exceptions | 24 | 6 | 0 |
-| 6.12 Environments and evaluation | 1 | 1 | 2 |
+| 6.9 Bytevectors | 39 | 0 | 0 |
+| 6.10 Control Features | 31 | 3 | 0 |
+| 6.11 Exceptions | 29 | 1 | 0 |
+| 6.12 Environments and evaluation | 1 | 3 | 0 |
 | 6.13 Input and output | 61 | 1 | 0 |
-| Read syntax | 78 | 6 | 9 |
-| Numeric syntax | 8 | 2 | 105 |
+| Read syntax | 85 | 6 | 2 |
+| Numeric syntax | 121 | 20 | 37 |
 | 6.14 System interface | 7 | 6 | 0 |
-| **Total** | 490 | 378 | 255 |
+| **Total** | 987 | 138 | 63 |
 
 The reports name each failing test by line; the gaps are those of the
 coverage table and of milestones 6 to 9.  Update the table with the reports.

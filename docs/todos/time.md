@@ -23,11 +23,9 @@ breakdown, one phase per commit.
 ## Context
 
 `(scheme time)` isn't defined: `current-second`, `current-jiffy`, and
-`jiffies-per-second` are unbound.  6.14's report fails 4 tests on them,
-which also need `real?`, `inexact?`, and `exact?`.
-
-Depends on `flonums.md`: `current-second` returns an inexact number, and
-the tests need the number predicates.
+`jiffies-per-second` are unbound.  6.14's report fails 4 tests on them.
+Flonums and the number predicates, which `current-second` and the tests
+need, have landed.
 
 ## Design
 
