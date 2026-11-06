@@ -25,7 +25,7 @@ breakdown, one phase per commit.
 Minim has about 250 primitives, C functions in the tables of `src/*.c`
 (`primitives.md`), and puts in the prelude (`scheme/*.scm`, `prelude.md`)
 mostly what primitives can't express: higher-order procedures.  So much
-that Scheme expresses easily is C: `vector->list`, `string-append`,
+that Scheme expresses easily is C: `string-append`, `vector-fill!`,
 `char-ci<?`, `zero?`, `nan?`.
 Each costs C code, a table entry, and argument checks, and keeps the kernel
 larger than it needs to be.
@@ -43,11 +43,14 @@ larger than it needs to be.
      `length` on lists);
    - a type's basic constructor (`cons`, `list`, `make-vector`), or an
      immediate's (`void`, `eof-object`);
+   - a conversion between a type and lists (`string->list`,
+     `list->vector`), which the prelude's higher-order procedures build
+     on;
    - what only C can do: the OS, the collector, the evaluator (`apply`,
      `values`), or C's tables and libraries (Unicode, `libm`, `strtod`).
 
    Operations and constructors built from these (`string-append`,
-   `vector->list`, `char-ci<?`, `zero?`) are not needed.
+   `string->vector`, `char-ci<?`, `zero?`) are not needed.
 2. Can Scheme express it easily, from the primitives that stay, with the
    same results and errors?
 
@@ -61,14 +64,14 @@ No and yes: it moves to the prelude.  Otherwise it stays.
 | Booleans and control | `boolean=?` | `boolean?`: predicate; `not`: booleans' operation; `void`: an immediate's constructor; `procedure?`: predicate; `apply`, `load`, `values`, `call-with-values`, `%call/cc`, `%eval-expanded`: the evaluator; `%closure-code`, the winders and handlers: representation.  New: `procedure-rename` (below), and `identity` in Scheme |
 | Equality | none | `eq?`, `eqv?` (flonum bits), `equal?` (the cycle-safe walk, and the expander's hot path), `equal-hash`, `string-hash` (64-bit hashing, past the fixnums) |
 | Chars | the five `char-ci` comparisons: `char-foldcase`, then a comparison | `char?`: predicate; `char->integer`, `integer->char`: representation; `char=?` `char<?` `char>?` `char<=?` `char>=?`: chars' operations; the classes, `digit-value`, and case: Unicode tables |
-| Strings and symbols | `symbol=?`, `string`, `string-append`, `substring`, `string-copy`, `string-copy!`, `string-fill!`, `string->list`, `list->string`, the five comparisons, the five `-ci` comparisons: built on chars | `string?`, `symbol?`: predicates; `make-string`: constructor; `string-length`, `string-ref`, `string-set!`, `symbol->string`, `string->symbol`, `%getprop`, `%putprop!`: representation and interning; `string-upcase`, `-downcase`, `-foldcase`: Unicode's full mappings |
-| Vectors | `vector`, `vector->list`, `list->vector`, `vector-copy`, `vector-copy!`, `vector-fill!`, `vector-append`, `string->vector`, `vector->string` | `vector?`: predicate; `make-vector`: constructor; `vector-length`, `vector-ref`, `vector-set!`: representation |
+| Strings and symbols | `symbol=?`, `string`, `string-append`, `substring`, `string-copy`, `string-copy!`, `string-fill!`, the five comparisons, the five `-ci` comparisons: built on chars | `string?`, `symbol?`: predicates; `make-string`: constructor; `string->list`, `list->string`: conversions; `string-length`, `string-ref`, `string-set!`, `symbol->string`, `string->symbol`, `%getprop`, `%putprop!`: representation and interning; `string-upcase`, `-downcase`, `-foldcase`: Unicode's full mappings |
+| Vectors | `vector`, `vector-copy`, `vector-copy!`, `vector-fill!`, `vector-append`, `string->vector`, `vector->string` | `vector?`: predicate; `make-vector`: constructor; `vector->list`, `list->vector`: conversions; `vector-length`, `vector-ref`, `vector-set!`: representation |
 | Bytevectors | `bytevector`, `bytevector-copy`, `bytevector-copy!`, `bytevector-append` | `bytevector?`: predicate; `make-bytevector`: constructor; `bytevector-length`, `bytevector-u8-ref`, `bytevector-u8-set!`: representation; `utf8->string`, `string->utf8`: a codec, not easily Scheme |
 | Numbers | `finite?`, `infinite?`, `nan?`, `zero?`, `positive?`, `negative?`, `odd?`, `even?`, `abs`, `max`, `min`, `exact->inexact`, `inexact->exact` | `number?`, `complex?`, `real?`, `rational?`, `integer?`, `exact-integer?`, `exact?`, `inexact?`, `fixnum?`, `flonum?`: predicates; `+` `-` `*` `/` and the comparisons: numbers' operations; `exact`, `inexact`, `floor`, `ceiling`, `truncate`, `round`, `quotient`, `remainder`: conversion and `libm`; `number->string`, `string->number`: the printer and parser |
 | Ports | `close-input-port`, `close-output-port`: `close-port` after a check; `%read-line`, `%read-string`, `%write-string`, `%read-bytevector`, `%read-bytevector!`, `%write-bytevector`: loops over a char or byte | the predicates; `eof-object`: an immediate's constructor; the rest: representation and the OS |
 | Errors, records, syntax, system | none | representation, the expander's aliases, the OS, the collector |
 
-About 60 move.  Notes on the harder ones:
+About 55 move.  Notes on the harder ones:
 
 - **Errors stay the same.**  A moved procedure checks its arguments and
   raises with `error`, as the primitive did, with the same message and
@@ -106,7 +109,7 @@ now-unused helpers, defines the procedures in the prelude, and regenerates
 `scheme/prelude.boot`.  The existing tests are the regression net: they
 pass unchanged, error messages included, or the phase records why not.
 Each phase measures `bench/run.sh` against `main`, and records any
-benchmark that slows past noise (see Open items).
+benchmark that slows past noise (see Settled in review).
 
 ### Phase 1 - `boolean=?`, `symbol=?`, the `char-ci` comparisons, and `identity`
 
@@ -149,10 +152,49 @@ Tests: the existing `strings` REPL test, ranges and their errors included.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'strings|boot|r7rs'
 ```
 
+**Done.**  Diverged from the plan:
+
+- The strings are in a new `scheme/strings.scm`, after `lists.scm`, not in
+  `sequences.scm`: `records.scm` calls `string-append` while the prelude
+  loads.
+- `string-copy!` and `string-fill!` raise `immutable string` before
+  writing, which Scheme can't test, so `mutable-string?` is a new
+  primitive, after Chez's, public in `(minim)`.
+
+Defaults of an omitted `end` go through `%length-or-0`, so the full form
+checks the arguments in the primitive's order: `(string-copy! 'x 0 'y)`
+still names `x`.  `string-ci` comparisons compare the strings'
+`string-foldcase`s, so full folding is unchanged.  Regenerating the boot
+file needed the old `string.c` back once: the old boot file defined the
+strings after `records.scm` needed them.  `tests/repl/strings.scm` gained
+`mutable-string?` and two argument-order errors; the rest of its output is
+unchanged.
+
+`string->list` and `list->string` were moved, measured, and restored as
+primitives: `string-map`, `string-for-each`, and library paths
+(`%split`, `%path-dir`) build on them, so their cost multiplied.  The
+rule's first question now names conversions between a type and lists,
+which keeps `vector->list` and `list->vector` in Phase 3 too.
+
+Benchmarks against `main`, release: the suite unchanged (11 runs; fib
+0.482 to 0.478 s median, expand 0.402 to 0.400).  Microbenchmarks, 3 runs
+each:
+
+| Loop | `main` | Phase 2 | Slower |
+|---|---|---|---|
+| 200,000 `(string-append "hello" " " "world")` | 0.12 s | 5.1 s | 43x |
+| 200,000 `(string<? "hello world" "hello worle")` | 0.11 s | 4.3 s | 39x |
+| 1,000 `(list->string (string->list s))`, 1,000 chars | 0.02 s | 2.3 s, then 0.02 s restored | 100x, then none |
+
+Decided: the rest stay in Scheme; acceleration comes back only where a
+program truly needs it.
+
 ### Phase 3 - Vectors and bytevectors
 
-- `src/vector.c`, `src/bytevector.c`: the primitives in the review out.
-- `scheme/sequences.scm`: them.
+- `src/vector.c`, `src/bytevector.c`: the primitives in the review out;
+  `vector->list` and `list->vector` stay.
+- `scheme/sequences.scm`: them, or an earlier file if the prelude calls
+  them while loading, as `strings.scm` for strings.
 
 Tests: the existing `vectors` and `bytevectors` REPL tests.
 
@@ -210,23 +252,7 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### Keep hot or bulk operations in C for speed?
-
-The rule doesn't weigh speed, and Minim interprets the prelude: a moved
-`zero?` is a closure call that calls `=`, and a moved `string-append` or
-`read-line` handles each char through the interpreter, where C copies or
-reads in one call.  Chez can move these to Scheme because it compiles
-them.  `char<?` in Scheme measured 9 times slower per call than the
-primitive.  Provisional: follow the rule,
-and list every benchmark a phase slows past noise, with the procedures
-responsible, for a decision before the next phase; the bulk I/O of Phase 5
-is the likeliest to stay.
-
-### Are the string and `-ci` comparisons worth moving?
-
-They are built on char comparisons, so the rule moves them, but they are
-variadic and called in loops (`string<?` in sorting), and the `-ci` ones
-fold every char per call.  Provisional: move them, under the item above.
+None.  Both were decided in Phase 2; see Settled in review.
 
 ## Settled in review
 
@@ -235,6 +261,14 @@ fold every char per call.  Provisional: move them, under the item above.
   `not`, `boolean?`, `void`, `eof-object`, the five char comparisons, and
   the numeric tower's predicates stay primitives.
 - `list` and `length` stay primitives: lists' constructor and operation.
+- Conversions between a type and lists stay primitives: `string->list`,
+  `list->string`, `vector->list`, `list->vector`.
+- Speed: the rule doesn't weigh it, and Minim interprets the prelude, so
+  a moved procedure costs a closure call and handles each element through
+  the interpreter (`char<?` measured 9 times slower, `string-append` 43).
+  Accepted, the string and `-ci` comparisons included: acceleration
+  returns to C only where a program truly needs it.  Each phase still
+  records its measurements.
 - `identity` is public, in `(minim)`; `make-parameter` uses it.
 - R5RS's `exact->inexact` and `inexact->exact` keep their names through a
   new `procedure-rename`, after Racket's, rather than printing as

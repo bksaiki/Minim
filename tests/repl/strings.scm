@@ -88,6 +88,14 @@ u
 (string-fill! t 1)
 (string-copy! u 4 "abc")
 (string-copy! (symbol->string 'abc) 0 "x")
+(string-copy! 'x 0 'y)
+(string-fill! 'x 1)
+
+; mutable-string?, Minim's own, after Chez: symbol names are immutable.
+(mutable-string? (make-string 2))
+(mutable-string? "abc")
+(mutable-string? (symbol->string 'abc))
+(mutable-string? 'abc)
 
 ; Mapping over chars, to the shortest string's length.
 (string-map char-upcase "abc")

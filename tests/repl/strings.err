@@ -18,6 +18,8 @@ error: string-fill!: immutable string: "abc"
 error: string-fill!: not a char: 1
 error: string-copy!: bad index: 4
 error: string-copy!: immutable string: "abc"
+error: string-copy!: not a string: x
+error: string-fill!: not a string: x
 error: string->list: not a string: abc
 error: string-upcase: not a string: abc
 error: string-ci=?: not a string: a
