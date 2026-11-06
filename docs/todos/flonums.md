@@ -231,6 +231,20 @@ names imported from `(scheme inexact)`.  The reports updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'numbers|libraries|r7rs'
 ```
 
+**Done.**  `number?`, `complex?`, and `real?` are one primitive;
+`exact-integer?` is `fixnum?`'s.  `exact?`, `inexact?`, `finite?`,
+`infinite?`, and `nan?` raise on a non-number; the others are `#f`.  `exact`
+raises `no exact representation` for a fraction, an infinity, or NaN, and
+`fixnum out of range` past it; `inexact->exact` and `exact->inexact` share
+`exact`'s and `inexact`'s functions, so their errors say `exact:` and
+`inexact:`.  `round` is `nearbyint`, to even by the default rounding mode.
+`is_integral` now also serves the parser's `#e` and `odd?`.  `(minim)`
+gained `(scheme inexact)`, `flonum?`, `exact->inexact`, and
+`inexact->exact`.  `libraries.scm`'s `(scheme r5rs)` library calls the
+R5RS names.  Reports: 6.2 74 to 110 passed, its rest mostly `atan`,
+`expt`, `log` and the other math functions, `modulo` and the `floor/`
+family, and rationals; 4.2 58 to 61; 6.4 all 65.
+
 ### After the last phase
 
 Sync the docs: `gc.md` (the tag, layout, and space), `primitives.md`

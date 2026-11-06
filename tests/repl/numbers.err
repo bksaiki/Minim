@@ -22,3 +22,11 @@ error: odd?: not an integer: 3.5
 error: even?: not an integer: +inf.0
 error: abs: fixnum overflow
 error: max: not a number: a
+error: exact?: not a number: a
+error: nan?: not a number: "x"
+error: exact: no exact representation: 2.5
+error: exact: no exact representation: +inf.0
+error: exact: no exact representation: +nan.0
+error: exact: fixnum out of range: 1152921504606847000.0
+error: inexact: not a number: a
+error: floor: not a number: a

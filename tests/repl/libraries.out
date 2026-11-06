@@ -11,10 +11,11 @@ hey!(1 2)
 (#t #t #f)
 #\A
 lazy
+(#t #t #t)
 (lib point) loaded
 (1 2)
 25
-(swapped 2 1)
+(swapped 2 1)(2.0 1)
 (#t 6 when)
 (#t 1)
 (0 1 many)

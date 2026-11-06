@@ -1,2 +1,1 @@
-FAIL 1151 (list-ref '(a b c d) (exact (round 1.8))) raised ("unbound variable" exact)
-6.4 Lists: 64 passed, 1 failed, 0 errors
+6.4 Lists: 65 passed, 0 failed, 0 errors

@@ -11,6 +11,10 @@
 #include "heap.h"
 #include "prims.h"
 
+static bool is_integral(double d) {
+    return isfinite(d) && d == floor(d);
+}
+
 // Value of the digit `c` in `radix`, or -1 if it isn't one.
 static int digit_value(uint32_t c, unsigned radix) {
     int d = c >= '0' && c <= '9'   ? (int)(c - '0')
@@ -130,7 +134,7 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
     }
 
     if (exactness == 'e') {
-        if (!isfinite(d) || d != floor(d))
+        if (!is_integral(d))
             return MINIM_PARSE_NOT_EXACT;
         if (d < -0x1p60 || d >= 0x1p60)
             return MINIM_PARSE_OUT_OF_RANGE;
@@ -325,7 +329,7 @@ static bool is_odd(minim_obj *args, const char *msg) {
     num a = num_arg(args[0], msg);
     if (!a.flo)
         return a.i & 1;
-    check(isfinite(a.d) && a.d == floor(a.d), msg, args[0]);
+    check(is_integral(a.d), msg, args[0]);
     return fmod(a.d, 2) != 0;
 }
 
@@ -449,6 +453,100 @@ static minim_obj prim_is_fixnum(minim_obj *args, size_t n) {
     return boolean(minim_is_fixnum(args[0]));
 }
 
+static minim_obj prim_is_flonum(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(minim_is_flonum(args[0]));
+}
+
+static minim_obj prim_is_number(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(minim_is_fixnum(args[0]) || minim_is_flonum(args[0]));
+}
+
+static minim_obj prim_is_rational(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(minim_is_fixnum(args[0])
+                   || (minim_is_flonum(args[0]) && isfinite(minim_flonum_value(args[0]))));
+}
+
+static minim_obj prim_is_integer(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(minim_is_fixnum(args[0])
+                   || (minim_is_flonum(args[0]) && is_integral(minim_flonum_value(args[0]))));
+}
+
+static minim_obj prim_is_exact(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(!num_arg(args[0], "exact?: not a number").flo);
+}
+
+static minim_obj prim_is_inexact(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return boolean(num_arg(args[0], "inexact?: not a number").flo);
+}
+
+static minim_obj prim_is_finite(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "finite?: not a number");
+    return boolean(!a.flo || isfinite(a.d));
+}
+
+static minim_obj prim_is_infinite(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "infinite?: not a number");
+    return boolean(a.flo && isinf(a.d));
+}
+
+static minim_obj prim_is_nan(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "nan?: not a number");
+    return boolean(a.flo && isnan(a.d));
+}
+
+// The fixnum equal to args[0]; raises unless it is integral and in range.
+static minim_obj prim_exact(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "exact: not a number");
+    if (!a.flo)
+        return args[0];
+    check(is_integral(a.d), "exact: no exact representation", args[0]);
+    check(a.d >= -0x1p60 && a.d < 0x1p60, "exact: fixnum out of range", args[0]);
+    return minim_fixnum((intptr_t)a.d);
+}
+
+static minim_obj prim_inexact(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "inexact: not a number");
+    return a.flo ? args[0] : minim_make_flonum((double)a.i);
+}
+
+// args[0] rounded by `f`; a fixnum is already integral.
+static minim_obj round_by(minim_obj *args, double (*f)(double), const char *msg) {
+    num a = num_arg(args[0], msg);
+    return a.flo ? minim_make_flonum(f(a.d)) : args[0];
+}
+
+static minim_obj prim_floor(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return round_by(args, floor, "floor: not a number");
+}
+
+static minim_obj prim_ceiling(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return round_by(args, ceil, "ceiling: not a number");
+}
+
+static minim_obj prim_truncate(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return round_by(args, trunc, "truncate: not a number");
+}
+
+// To even, by the default rounding mode.
+static minim_obj prim_round(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return round_by(args, nearbyint, "round: not a number");
+}
+
 const minim_prim_def minim_number_prims[] = {
     {"+", prim_add, 0, MINIM_VARIADIC},
     {"-", prim_sub, 1, MINIM_VARIADIC},
@@ -464,6 +562,26 @@ const minim_prim_def minim_number_prims[] = {
     {"number->string", prim_number_to_string, 1, 2},
     {"string->number", prim_string_to_number, 1, 2},
     {"fixnum?", prim_is_fixnum, 1, 1},
+    {"flonum?", prim_is_flonum, 1, 1},
+    {"number?", prim_is_number, 1, 1},
+    {"complex?", prim_is_number, 1, 1},
+    {"real?", prim_is_number, 1, 1},
+    {"rational?", prim_is_rational, 1, 1},
+    {"integer?", prim_is_integer, 1, 1},
+    {"exact-integer?", prim_is_fixnum, 1, 1},
+    {"exact?", prim_is_exact, 1, 1},
+    {"inexact?", prim_is_inexact, 1, 1},
+    {"finite?", prim_is_finite, 1, 1},
+    {"infinite?", prim_is_infinite, 1, 1},
+    {"nan?", prim_is_nan, 1, 1},
+    {"exact", prim_exact, 1, 1},
+    {"inexact", prim_inexact, 1, 1},
+    {"inexact->exact", prim_exact, 1, 1},
+    {"exact->inexact", prim_inexact, 1, 1},
+    {"floor", prim_floor, 1, 1},
+    {"ceiling", prim_ceiling, 1, 1},
+    {"truncate", prim_truncate, 1, 1},
+    {"round", prim_round, 1, 1},
     {"zero?", prim_is_zero, 1, 1},
     {"positive?", prim_is_positive, 1, 1},
     {"negative?", prim_is_negative, 1, 1},

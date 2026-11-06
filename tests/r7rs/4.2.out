@@ -1,4 +1,4 @@
-ERROR 199 ("unbound variable" number?)
+ERROR 199 ("unbound variable" exp)
 ERROR 204 ("unbound variable" exact-integer-sqrt)
 FAIL 207 (let*-values (((root rem) (exact-integer-sqrt (expt 2 60)))) (list root rem)) raised ("unbound variable" exact-integer-sqrt)
 FAIL 211 (let*-values (((root rem) (exact-integer-sqrt (expt 2 61)))) (list root rem)) raised ("unbound variable" exact-integer-sqrt)
@@ -7,9 +7,5 @@ READ-ERROR 219 ("fixnum out of range" "1152921504606846976")
 READ-ERROR 223 ("fixnum out of range" "1630477228166597776")
 READ-ERROR 227 ("fixnum out of range" "31622776601683793319")
 ERROR 231 ("unbound variable" exact-integer-sqrt)
-ERROR 331 ("unbound variable" integer?)
-FAIL 339 (f 12) raised ("unbound variable" radix)
-FAIL 340 (parameterize ((radix 2)) (f 12)) raised ("unbound variable" radix)
-FAIL 342 (f 12) raised ("unbound variable" radix)
 FAIL 347 `#(10 5 ,(square 2) ,@(map square '(4 3)) 8) raised ("unbound variable" square)
-4.2 Derived expression types: 58 passed, 7 failed, 7 errors
+4.2 Derived expression types: 61 passed, 4 failed, 6 errors

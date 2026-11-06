@@ -139,3 +139,43 @@
 (even? +inf.0)
 (abs -1152921504606846976)
 (max 1 'a)
+
+; Predicates, of a fixnum, an integral flonum, a fraction, an infinity, NaN,
+; and a non-number.
+(map number? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map complex? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map real? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map rational? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map integer? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map exact-integer? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map flonum? '(1 2.0 2.5 +inf.0 +nan.0 a))
+(map exact? '(1 2.0 2.5 +inf.0 +nan.0))
+(map inexact? '(1 2.0 2.5 +inf.0 +nan.0))
+(map finite? '(1 2.0 2.5 +inf.0 +nan.0))
+(map infinite? '(1 2.0 2.5 +inf.0 -inf.0 +nan.0))
+(map nan? '(1 2.0 2.5 +inf.0 +nan.0))
+(exact? 'a)
+(nan? "x")
+
+; exact and inexact, and R5RS's names for them.
+(exact 2.0)
+(exact -0.0)
+(exact 5)
+(inexact 5)
+(inexact 2.5)
+(exact->inexact 1)
+(inexact->exact 3.0)
+(exact -1152921504606846976.0)
+(exact 2.5)
+(exact +inf.0)
+(exact +nan.0)
+(exact 1152921504606846976.0)
+(inexact 'a)
+
+; Rounding: a fixnum is itself; round is to even.
+(map floor '(2.5 -2.5 3 -0.4))
+(map ceiling '(2.5 -2.5 3 -0.4))
+(map truncate '(2.5 -2.5 3 -0.4))
+(map round '(2.5 -2.5 3.5 -0.4 0.6 3))
+(round +inf.0)
+(floor 'a)

@@ -83,6 +83,8 @@ bump
 (char-upcase #\a)
 (import (scheme lazy))
 (force (delay 'lazy))
+(import (scheme inexact))
+(list (finite? 1.5) (infinite? -inf.0) (nan? +nan.0))
 
 ; Library files: an unknown library loads from its .sld file, once, and
 ; includes files relative to it.
@@ -107,6 +109,7 @@ bump
       (let ((x 1) (y 2))
         (swap! x y)
         (write (cond ((> x y) => (lambda (t) `(swapped ,x ,y))) (else 'no)))
+        (write (list (exact->inexact x) (inexact->exact 1.0)))
         (newline)))
     (define (fail) (when #t (error "unreachable")))))
 (import (old-style))
