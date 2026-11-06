@@ -12,7 +12,7 @@
 #include "prims.h"
 #include "unicode.h"
 
-size_t minim_utf8_decode(const unsigned char *s, uint32_t *c) {
+size_t minim_utf8_decode(const unsigned char *s, size_t n, uint32_t *c) {
     size_t len;
     uint32_t cp;
     uint32_t min;  // smallest code point that needs `len` bytes
@@ -36,9 +36,8 @@ size_t minim_utf8_decode(const unsigned char *s, uint32_t *c) {
         return 1;
     }
 
-    // Stops at the terminating NUL, which isn't a continuation byte.
     for (size_t i = 1; i < len; i++) {
-        if ((s[i] & 0xC0) != 0x80) {
+        if (i == n || (s[i] & 0xC0) != 0x80) {
             *c = 0xFFFD;
             return 1;
         }
@@ -66,7 +65,7 @@ int32_t minim_utf8_getc(FILE *in) {
         len = 4;
 
     // Read continuation bytes, leaving the first non-continuation byte.
-    unsigned char buf[5] = {(unsigned char)b};
+    unsigned char buf[4] = {(unsigned char)b};
     size_t n = 1;
     while (n < len) {
         int c = getc(in);
@@ -78,10 +77,9 @@ int32_t minim_utf8_getc(FILE *in) {
         }
         buf[n++] = (unsigned char)c;
     }
-    buf[n] = '\0';
 
     uint32_t c;
-    if (minim_utf8_decode(buf, &c) != n)
+    if (minim_utf8_decode(buf, n, &c) != n)
         c = 0xFFFD;
     return (int32_t)c;
 }

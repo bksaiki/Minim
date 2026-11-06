@@ -13,10 +13,12 @@
 #include "minim.h"
 
 /**
- * Decodes one code point from the NUL-terminated `s` into `*c`; returns the
- * bytes consumed.  An invalid sequence decodes to U+FFFD and consumes one byte.
+ * Decodes one code point from the `n` bytes, at least one, at `s` into `*c`;
+ * returns the bytes consumed.  An invalid sequence decodes to U+FFFD and
+ * consumes one byte.  A NUL ends a sequence too, so a NUL-terminated `s` may
+ * pass SIZE_MAX.
  */
-size_t minim_utf8_decode(const unsigned char *s, uint32_t *c);
+size_t minim_utf8_decode(const unsigned char *s, size_t n, uint32_t *c);
 
 /**
  * Reads one code point from `in`, or returns -1 at end of file.  An invalid

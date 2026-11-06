@@ -159,14 +159,7 @@ static minim_obj prim_get_environment_variables(minim_obj *args, size_t n) {
         const char *sep = entry[0] == '\0' ? NULL : strchr(entry + 1, '=');
         if (sep == NULL)
             continue;
-        size_t len = (size_t)(sep - entry);
-        char *s = malloc(len + 1);
-        if (s == NULL)
-            minim_out_of_memory();
-        memcpy(s, entry, len);
-        s[len] = '\0';
-        name = minim_string_from_cstr(s);
-        free(s);
+        name = minim_string_from_utf8(entry, (size_t)(sep - entry));
         value = minim_string_from_cstr(sep + 1);
         value = minim_cons(name, value);
         lst = minim_cons(value, lst);
