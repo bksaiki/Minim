@@ -384,6 +384,46 @@ static void test_vector_copy(void) {
     MINIM_RETURN_VOID;
 }
 
+// Whether the bytevector `bv` holds 0, 1, ..., n - 1.
+static bool is_bytes(minim_obj bv, size_t n) {
+    if (!minim_is_bytevector(bv) || minim_bytevector_length(bv) != n)
+        return false;
+    for (size_t i = 0; i < n; i++) {
+        if (minim_bytevector_data(bv)[i] != (uint8_t)i)
+            return false;
+    }
+    return true;
+}
+
+// A bytevector survives collections, young and promoted, with its bytes, in
+// an old vector by the barrier too.
+static void test_bytevectors(void) {
+    minim_gc_config saved = use_generations(3);
+    minim_obj bv = minim_make_bytevector(100, 0);
+    minim_obj holder = MINIM_NIL;
+    MINIM_FRAME(&bv, &holder);
+    for (size_t i = 0; i < 100; i++)
+        minim_bytevector_data(bv)[i] = (uint8_t)i;
+    for (unsigned g = 0; g <= 3; g++) {
+        make_list(100);  // garbage
+        minim_gc_collect_generation(g);
+        CHECK_EQ(generation(bv), g < 3 ? g + 1 : 3);
+        CHECK(is_bytes(bv, 100));
+    }
+
+    holder = minim_make_vector(1, MINIM_NIL);
+    minim_gc_collect_major();  // `holder` into generation 3
+    bv = minim_make_bytevector(10, 0);
+    for (size_t i = 0; i < 10; i++)
+        minim_bytevector_data(bv)[i] = (uint8_t)i;
+    minim_vector_set(holder, 0, bv);
+    bv = MINIM_NIL;
+    minim_gc_collect_minor();
+    CHECK(is_bytes(minim_vector_ref(holder, 0), 10));
+    minim_gc_set_config(saved);
+    MINIM_RETURN_VOID;
+}
+
 // A new rtd named `name` with the fields `x` and `y`.
 static minim_obj make_point_type(const char *name) {
     static const char *const fields[] = {"x", "y"};
@@ -455,6 +495,7 @@ int main(void) {
     test_remembered();
     test_closures();
     test_vector_copy();
+    test_bytevectors();
     test_records();
     minim_shutdown();
     return test_result();

@@ -48,7 +48,7 @@ minim_add_test(error)
 minim_add_test(read INTERNAL)
 minim_add_test(eval INTERNAL)
 minim_add_test(prims)
-minim_add_test(port)
+minim_add_test(port INTERNAL)
 minim_add_test(unicode INTERNAL)
 
 minim_test_executable(startup INTERNAL)
@@ -118,6 +118,7 @@ endfunction()
 minim_add_repl_test(aliases)
 minim_add_repl_test(bodies)
 minim_add_repl_test(boot)
+minim_add_repl_test(bytevectors)
 minim_add_repl_test(chars)
 minim_add_repl_test(continuations)
 minim_add_repl_test(core)
@@ -148,6 +149,8 @@ minim_add_repl_test(values)
 minim_add_repl_test(vectors)
 
 minim_add_script_test(fail STATUS 1)
+minim_add_script_test(binary-files ARGS binary-files.scm
+    ${CMAKE_CURRENT_BINARY_DIR}/binary-files.bin)
 minim_add_script_test(gc-settings NO_STRESS)  # the defaults
 minim_add_script_test(gc-settings-env ARGS gc-settings.scm
     ENV MINIM_GC_NURSERY_BYTES=1 MINIM_GC_RADIX=16 MINIM_GC_MAX_GENERATION=3)

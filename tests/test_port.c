@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "minim.h"
+#include "port.h"
 #include "test.h"
 
 // A string port's buffer and name survive collections, young and old.
@@ -20,6 +21,24 @@ static void test_string_port_gc(void) {
     minim_gc_collect_major();
     CHECK_EQ(minim_port_read_char(p), 'e');
     CHECK(prints_as(minim_port_name(p), "\"string\""));
+    MINIM_RETURN_VOID;
+}
+
+// A pushed-back end of input is read once, though more may follow it, as on a
+// terminal; for chars and bytes.
+static void test_lookahead_end(void) {
+    minim_obj p = eval_source("(open-input-string \"ab\")");
+    minim_obj read_u8 = MINIM_NIL;
+    MINIM_FRAME(&p, &read_u8);
+    minim_port_unread_char(p, -1);
+    CHECK_EQ(minim_port_read_char(p), -1);
+    CHECK_EQ(minim_port_read_char(p), 'a');
+
+    p = eval_source("(open-input-bytevector #u8(7))");
+    read_u8 = minim_symbol_value(minim_intern_cstr("%read-u8"));
+    minim_port_unread_char(p, -1);
+    CHECK_EQ(minim_primitive_fn(read_u8)(&p, 1), MINIM_EOF);
+    CHECK_EQ(minim_primitive_fn(read_u8)(&p, 1), minim_fixnum(7));
     MINIM_RETURN_VOID;
 }
 
@@ -113,6 +132,7 @@ static void test_shutdown_flushes(void) {
 int main(void) {
     minim_init();
     test_string_port_gc();
+    test_lookahead_end();
     test_file_untraced();
     test_flags_copied();
     test_dropped_closed();

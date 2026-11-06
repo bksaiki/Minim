@@ -128,6 +128,9 @@ static void test_lists(void) {
     CHECK(reads_as(", @x", "(unquote @x)"));
     CHECK(reads_as("'(1 2)", "'(1 2)"));
     CHECK(reads_as("#()", "#()"));
+    CHECK(reads_as("#u8()", "#u8()"));
+    CHECK(reads_as("#u8(0 1 255)", "#u8(0 1 255)"));
+    CHECK(reads_as("(#u8(1) #u8(2))", "(#u8(1) #u8(2))"));
     CHECK(reads_as("#(1 \"a\" #\\b #(2))", "#(1 \"a\" #\\b #(2))"));
 }
 
@@ -184,6 +187,13 @@ static void test_errors(void) {
     CHECK(read_fails_with("(1 2", "eof in list"));
     CHECK(read_fails_with("#(1", "eof in vector"));
     CHECK(read_fails_with("#(1 . 2)", "bad vector"));
+    CHECK(read_fails_with("#u8(1", "eof in bytevector"));
+    CHECK(read_fails_with("#u8(1 . 2)", "bad bytevector"));
+    CHECK(read_fails_with("#u8(256)", "bad byte"));
+    CHECK(read_fails_with("#u8(-1)", "bad byte"));
+    CHECK(read_fails_with("#u8(a)", "bad byte"));
+    CHECK(read_fails_with("#u8 (1)", "bad # syntax"));
+    CHECK(read_fails_with("#u9(1)", "bad # syntax"));
     CHECK(read_fails_with("\"abc", "eof in string"));
     CHECK(read_fails_with("\"\\q\"", "bad string escape"));
     CHECK(read_fails_with("\"\\xZZ;\"", "bad string escape"));

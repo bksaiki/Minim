@@ -1,7 +1,5 @@
 FAIL 2194 (cadr (read (open-input-string "#0=(1 . #0#)"))) raised ("bad # syntax" "0=")
 FAIL 2195 (cadr (read (open-input-string "(#0=(1 2 3) #0#)"))) raised ("bad # syntax" "0=")
-READ-ERROR 2205 ("bad # syntax" "u8")
-READ-ERROR 2206 ("bad # syntax" "u8")
 FAIL 2211 (read (open-input-string "|H\\x65;llo|")) => |H\x65
 FAIL 2213 (read (open-input-string "#!fold-case ABC")) raised ("bad # syntax" "!fold-case")
 FAIL 2214 (read (open-input-string "#!fold-case #!no-fold-case ABC")) raised ("bad # syntax" "!fold-case")
@@ -15,4 +13,4 @@ READ-ERROR 2270 ("bad # syntax" "x03BB")
 ERROR 2280 ("bad syntax" (test-write-syntax "|a b|" '|a b|))
 READ-ERROR 2282 ("eof in string")
 FAIL 2286 (get-output-string out) => "|a|"
-Read syntax: 76 passed, 6 failed, 11 errors
+Read syntax: 78 passed, 6 failed, 9 errors

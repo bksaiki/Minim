@@ -161,6 +161,21 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(vector-append v ...)` | a new vector of the arguments' elements in order |
 | `(string->vector s [start [end]])`, `(vector->string v [start [end]])` | a new vector of the chars of `s`; a new string of the chars in `v` |
 
+### Bytevectors
+
+| Call | Result |
+|---|---|
+| `(bytevector b ...)` | new bytevector of the bytes, fixnums 0 to 255 |
+| `(make-bytevector k [b])` | new bytevector of length `k`, filled with `b` (default 0) |
+| `(bytevector? x)` | whether `x` is a bytevector |
+| `(bytevector-length bv)` | length of `bv` |
+| `(bytevector-u8-ref bv i)`, `(bytevector-u8-set! bv i b)` | byte `i` of `bv`; sets it, void |
+| `(bytevector-copy bv [start [end]])` | new bytevector of the bytes of `bv` |
+| `(bytevector-copy! to at from [start [end]])` | copies bytes of `from` into `to` at `at`, correctly when they overlap; void |
+| `(bytevector-append bv ...)` | new bytevector of the arguments' bytes in order |
+| `(utf8->string bv [start [end]])` | new string the bytes encode in UTF-8; a malformed sequence decodes to U+FFFD |
+| `(string->utf8 s [start [end]])` | new bytevector of the UTF-8 encoding of the chars of `s` |
+
 ### Strings and symbols
 
 | Call | Result |
@@ -207,8 +222,10 @@ The port primitives are in `src/port.c`, listed in `ports.md`.  Those whose
 port is optional are Scheme wrappers (`scheme/ports.scm`) over primitives
 taking it: `%read`, `%read-char`, `%peek-char`, `%read-line`,
 `%read-string`, `%char-ready?`, `%write`, `%display`, `%write-char`,
-`%write-string`, and `%flush-output-port`.  `(%standard-port i)` is the
-standard input (0), output (1), or error (2) port.
+`%write-string`, `%flush-output-port`, `%read-u8`, `%peek-u8`,
+`%u8-ready?`, `%read-bytevector`, `%read-bytevector!`, `%write-u8`, and
+`%write-bytevector`.  `(%standard-port i)` is the standard input (0), output
+(1), or error (2) port.
 
 ### Storage
 

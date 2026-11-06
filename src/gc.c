@@ -201,6 +201,8 @@ static size_t typed_size(minim_obj header) {
         return minim_vector_size(n);
     case MINIM_TYPE_STRING:
         return minim_string_size(n);
+    case MINIM_TYPE_BYTEVECTOR:
+        return minim_bytevector_size(n);
     case MINIM_TYPE_PRIMITIVE:
         return MINIM_PRIMITIVE_SIZE;
     case MINIM_TYPE_CONTINUATION:

@@ -19,8 +19,8 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 | `111` | typed object | first word is a header |
 | `010`, `100` | | reserved (flonum, -) |
 
-Typed objects (vectors, strings, primitives, continuations, error objects,
-records, ports) start with a header, `(length << 4) | (immutable << 3) | type`.
+Typed objects (vectors, strings, bytevectors, primitives, continuations,
+error objects, records, ports) start with a header, `(length << 4) | (immutable << 3) | type`.
 Error objects have type 1, the first odd code; an odd code can't equal the
 forwarding marker.  Every object is at least 2 words, so any object can hold
 a forwarding record.
@@ -30,6 +30,7 @@ pair     [ car | cdr ]                        16 B
 symbol   [ name : string | value | plist ]    24 B, rounded up to 32
 vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
+bytevector [ header | b0 b1 ... (uint8_t) ]   8 + n B, rounded up to 16
 closure  [ code : (case-)lambda form | env | name ]  24 B, rounded up to 32
 primitive [ header | fn | name | min | max ]  40 B, rounded up to 48
 continuation [ header | k | stack | height ]  32 B
@@ -122,8 +123,8 @@ Each collection is Cheney-style:
 3. Scans what was copied, from where the target's spaces ended before the
    collection, until no scan cursor moves.  Pairs are two traced words,
    symbols and closures three; a typed object is traced by its header
-   (vector elements are, string chars and a primitive's C function pointer
-   aren't).
+   (vector elements are; string chars, bytevector bytes, and a primitive's
+   C function pointer aren't).
 4. Releases the from-space chunks.
 
 **Write barrier.**  A collection must find every older object that points

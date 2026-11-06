@@ -63,8 +63,12 @@ static bool is_equal(minim_obj a, minim_obj b) {
                 pending_push(&p, minim_vector_ref(a, i), minim_vector_ref(b, i));
         } else if (minim_is_string(a) && minim_is_string(b)) {
             result = minim_string_equal(a, b);
+        } else if (minim_is_bytevector(a) && minim_is_bytevector(b)) {
+            size_t n = minim_bytevector_length(a);
+            result = n == minim_bytevector_length(b)
+                && memcmp(minim_bytevector_data(a), minim_bytevector_data(b), n) == 0;
         } else {
-            result = false;  // distinct, and not both pairs, vectors, or strings
+            result = false;  // distinct, and not both of a kind compared by contents
         }
     }
 
@@ -83,7 +87,7 @@ static minim_obj prim_equal(minim_obj *args, size_t n) {
 enum { HASH_BUDGET = 64 };
 
 // Kind markers, so different kinds with the same contents hash differently
-enum { HASH_PAIR = 1, HASH_VECTOR, HASH_SYMBOL, HASH_CLOSURE };
+enum { HASH_PAIR = 1, HASH_VECTOR, HASH_SYMBOL, HASH_CLOSURE, HASH_BYTEVECTOR };
 
 // Hash agreeing with `equal?`: equal values visit the same nodes in the same
 // order, so they consume the budget identically.
@@ -103,6 +107,12 @@ static uint64_t equal_hash(minim_obj x, int *budget) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_PAIR);
         h = minim_hash_mix(h, equal_hash(minim_car(x), budget));
         return minim_hash_mix(h, equal_hash(minim_cdr(x), budget));
+    }
+    if (minim_is_bytevector(x)) {
+        uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_BYTEVECTOR);
+        for (size_t i = 0; i < minim_bytevector_length(x); i++)
+            h = minim_hash_mix(h, minim_bytevector_data(x)[i]);
+        return h;
     }
     if (minim_is_vector(x)) {
         uint64_t h = minim_hash_mix(MINIM_HASH_INIT, HASH_VECTOR);

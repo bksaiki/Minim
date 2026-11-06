@@ -11,17 +11,30 @@ error: close-output-port: not an output port: #<input port string>
 error: close-port: not a port: x
 error: input-port-open?: not a port: x
 error: %standard-port: not 0, 1, or 2: 3
-error: read-char: not an open input port: #<output port string>
-error: write-char: not an open output port: #<input port string>
-error: read-char: not an open input port: #<input port load/defs.scm>
+error: read-char: not an open textual input port: #<output port string>
+error: write-char: not an open textual output port: #<input port string>
+error: read-char: not an open textual input port: #<input port load/defs.scm>
 error: write-char: not a char: 1
 error: read-string: not a non-negative fixnum: -1
 error: write-string: bad start: 2
 error: write-string: bad end: 4
 error: arity mismatch: #<procedure read-char>
-error: read: not an open input port: #<output port string>
-error: write: not an open output port: #<input port string>
-error: display: not an open output port: #<output port string>
+error: read: not an open textual input port: #<output port string>
+error: write: not an open textual output port: #<input port string>
+error: display: not an open textual output port: #<output port string>
 error: arity mismatch: #<procedure write>
 error: delete-file: not a string: x
 error: get-output-string: not a string output port: #<output port stdout>
+error: read-char: not an open textual input port: #<binary input port bytevector>
+error: write: not an open textual output port: #<binary output port bytevector>
+error: read-line: not an open textual input port: #<binary input port bytevector>
+error: read-u8: not an open binary input port: #<input port string>
+error: write-u8: not an open binary output port: #<output port string>
+error: write-u8: not a byte: 256
+error: read-bytevector: not a non-negative fixnum: -1
+error: read-bytevector!: bad index: 6
+error: write-bytevector: bad index: 2
+error: get-output-bytevector: not a bytevector output port: #<output port string>
+error: get-output-string: not a string output port: #<binary output port bytevector>
+error: open-input-bytevector: not a bytevector: "abc"
+error: read-u8: not an open binary input port: #<binary input port bytevector>

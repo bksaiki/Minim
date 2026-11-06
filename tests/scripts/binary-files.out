@@ -1,0 +1,7 @@
+(#t #f #t)
+(#t 0 0 #u8(255 192 10))
+(2 #u8(13 1 9 9) #<eof> #t)
+read-char: not an open textual input port
+(#u8(0 255 192 10 13 1) #f)
+open-binary-input-file: cannot open file
+#f

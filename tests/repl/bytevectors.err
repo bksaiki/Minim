@@ -1,0 +1,12 @@
+error: bytevector: not a byte: 256
+error: bytevector: not a byte: a
+error: make-bytevector: bad length: -1
+error: make-bytevector: not a byte: -1
+error: bytevector-length: not a bytevector: "abc"
+error: bytevector-u8-ref: bad index: 1
+error: bytevector-u8-set!: not a byte: 300
+error: bytevector-copy: bad index: 2
+error: bytevector-copy!: bad index: 4
+error: bytevector-append: not a bytevector: #(2)
+error: utf8->string: not a bytevector: "abc"
+error: string->utf8: not a string: #u8(1)

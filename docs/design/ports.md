@@ -1,8 +1,8 @@
 # Ports
 
-Textual ports (R7RS 6.13) over files and strings, in `src/port.c`, with the
-procedures over them in `scheme/ports.scm`.  Binary ports wait for
-bytevectors.
+Textual ports (R7RS 6.13) over files and strings, and binary ports over
+files and bytevectors, in `src/port.c`, with the procedures over them in
+`scheme/ports.scm`.
 
 ## The object
 
@@ -13,19 +13,25 @@ port  [ header | buffer | name | index | lookahead | file ]  48 B
 ```
 
 - The header's length bits hold the flags, as Chez's type word does: input
-  or output, file or string, and closed.
-- `buffer`: a string port's string.  An input port reads it from `index`; an
-  output one appends at `index`, the length so far, doubling the string when
-  it is full.
-- `name`: the path, `stdin`, `stdout`, `stderr`, or `string`, for printing:
-  `#<input port load/defs.scm>`, `#<output port stdout>`.
-- `lookahead`: a code point read but not consumed, or the end of input: for
-  `peek-char` and the reader's pushback.
+  or output, file or in memory, binary or textual, and closed.
+- `buffer`: a string port's string, or a bytevector port's bytevector.  An
+  input port reads it from `index`; an output one appends at `index`, the
+  length so far, doubling the buffer when it is full.
+- `name`: the path, `stdin`, `stdout`, `stderr`, `string`, or `bytevector`,
+  for printing: `#<input port load/defs.scm>`, `#<binary output port
+  bytevector>`.
+- `lookahead`: a code point or byte read but not consumed, or the end of
+  input: for `peek-char`, `peek-u8`, and the reader's pushback.
 - `file`: a file port's `FILE *`, not traced, NULL once closed.
 
 `buffer` and `name` are traced.  Unlike Chez's, a port has no handler
-record: file and string ports are two cases in C, and R7RS has no
-input/output ports, so one buffer suffices.
+record: file and in-memory ports are two cases in C, and R7RS has no
+input/output ports, so one buffer suffices.  Binary files open in `"rb"` or
+`"wb"`, so no line endings are translated.
+
+Textual procedures raise `<name>: not an open textual input port` (or
+output) on a binary port, and binary ones `not an open binary ...` on a
+textual one; closing, flushing, and the `-open?` predicates take either.
 
 File ports use stdio's buffering, so C's own writes to `stdout` stay in
 order with theirs.  So `char-ready?` can't tell whether input is waiting:
@@ -72,16 +78,21 @@ cyclic data loops forever.
 ## Procedures
 
 `(scheme base)`: `port?`, `input-port?`, `output-port?`, `textual-port?`,
-`binary-port?` (always false), `input-port-open?`, `output-port-open?`,
+`binary-port?`, `input-port-open?`, `output-port-open?`,
 `close-port`, `close-input-port`, `close-output-port`, `open-input-string`
 (reading a copy), `open-output-string`, `get-output-string` (which, unlike
 Chez's, doesn't reset the port), the current ports, `read-char`,
 `peek-char`, `read-line` (ending at a linefeed, a carriage return, or both),
 `read-string`, `char-ready?`, `write-char`, `write-string`, `newline`,
 `flush-output-port`, `eof-object`, `eof-object?`, and `call-with-port`,
-which closes the port when its procedure returns.
+which closes the port when its procedure returns.  Binary:
+`open-input-bytevector` (reading a copy), `open-output-bytevector`,
+`get-output-bytevector`, `read-u8`, `peek-u8`, `u8-ready?` (always true, as
+`char-ready?`), `read-bytevector`, `read-bytevector!`, `write-u8`, and
+`write-bytevector`.
 
 `(scheme file)`: `open-input-file`, `open-output-file`,
+`open-binary-input-file`, `open-binary-output-file`,
 `call-with-input-file`, `call-with-output-file`, `with-input-from-file`,
 `with-output-to-file` (by `parameterize`), `delete-file`, and
 `file-exists?`.  `(scheme read)`: `read`.  `(scheme write)`: `write`,

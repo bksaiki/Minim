@@ -82,6 +82,14 @@ minim_obj minim_make_string(size_t n, uint32_t c) {
     return (minim_obj)p | MINIM_TAG_TYPED;
 }
 
+minim_obj minim_make_bytevector(size_t n, uint8_t b) {
+    assert(n <= SIZE_MAX / MINIM_ALIGN);
+    minim_obj *p = minim_heap_alloc(minim_bytevector_size(n));
+    p[0] = minim_make_header(n, MINIM_TYPE_BYTEVECTOR);
+    memset(p + 1, b, n);
+    return (minim_obj)p | MINIM_TAG_TYPED;
+}
+
 minim_obj minim_make_closure(minim_obj code, minim_obj env) {
     MINIM_FRAME(&code, &env);
     minim_obj *p = minim_heap_alloc(MINIM_CLOSURE_SIZE);

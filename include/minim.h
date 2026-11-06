@@ -69,6 +69,7 @@ enum {
     MINIM_TYPE_STRING = 0x2,
     MINIM_TYPE_PORT = 0x3,  ///< its length bits hold its flags
     MINIM_TYPE_PRIMITIVE = 0x4,
+    MINIM_TYPE_BYTEVECTOR = 0x5,
     MINIM_TYPE_CONTINUATION = 0x6,
     MINIM_TYPE_RECORD = 0x7,  ///< a record's first word, its rtd, read as a header
 };
@@ -102,6 +103,11 @@ static inline size_t minim_record_size(size_t n) {
 /** Size in bytes of a string of length `n`. */
 static inline size_t minim_string_size(size_t n) {
     return sizeof(minim_obj) + n * sizeof(uint32_t);
+}
+
+/** Size in bytes of a bytevector of length `n`. */
+static inline size_t minim_bytevector_size(size_t n) {
+    return sizeof(minim_obj) + n;
 }
 
 // Fixnums: 61-bit signed integers stored as n << 3
@@ -200,6 +206,12 @@ static inline bool minim_is_vector(minim_obj x) {
 static inline bool minim_is_string(minim_obj x) {
     return minim_is_typed(x)
         && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_STRING;
+}
+
+/** Whether `x` is a bytevector. */
+static inline bool minim_is_bytevector(minim_obj x) {
+    return minim_is_typed(x)
+        && minim_header_type(minim_typed_header(x)) == MINIM_TYPE_BYTEVECTOR;
 }
 
 /** Whether `x` is a closure. */
@@ -480,6 +492,23 @@ static inline void minim_string_set(minim_obj s, size_t i, uint32_t c) {
     minim_string_chars(s)[i] = c;
 }
 
+// Bytevectors: arrays of bytes
+
+/** New bytevector of length `n` with every byte `b`. */
+minim_obj minim_make_bytevector(size_t n, uint8_t b);
+
+/** Length of the bytevector `bv`. */
+static inline size_t minim_bytevector_length(minim_obj bv) {
+    assert(minim_is_bytevector(bv));
+    return minim_header_length(minim_typed_header(bv));
+}
+
+/** Bytes of the bytevector `bv`, valid until the next allocation. */
+static inline uint8_t *minim_bytevector_data(minim_obj bv) {
+    assert(minim_is_bytevector(bv));
+    return (uint8_t *)(bv - MINIM_TAG_TYPED + sizeof(minim_obj));
+}
+
 // Symbols: interned ones are never freed
 
 /** Interned symbol named `str`; a new one is made as by minim_make_uninterned. */
@@ -699,8 +728,9 @@ void minim_define(const char *name, minim_obj value);
 enum {
     MINIM_PORT_INPUT = 0x1,
     MINIM_PORT_OUTPUT = 0x2,
-    MINIM_PORT_FILE = 0x4,  ///< over a FILE *, else over a string
+    MINIM_PORT_FILE = 0x4,     ///< over a FILE *, else over a string or bytevector
     MINIM_PORT_CLOSED = 0x8,
+    MINIM_PORT_BINARY = 0x10,  ///< of bytes, else of chars
 };
 
 /** The flags of the port `p`. */

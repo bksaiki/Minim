@@ -50,6 +50,7 @@ add_custom_command(
 
 add_library(libminim STATIC
     ${prelude_c}
+    src/bytevector.c
     src/char.c
     src/control.c
     src/env.c

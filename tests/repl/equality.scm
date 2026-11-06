@@ -27,3 +27,12 @@
 (equal? '(1) #(1))
 (define p (cons 1 2))
 (equal? p p)
+
+; Bytevectors are equal? by their bytes.
+(equal? #u8(1 2 3) (list->vector '(1 2 3)))
+(equal? #u8(1 2 3) #u8(1 2 3))
+(equal? #u8(1 2) #u8(1 2 3))
+(equal? #u8() #u8())
+(equal? '(#u8(255)) '(#u8(255)))
+(= (equal-hash #u8(1 2)) (equal-hash #u8(1 2)))
+(eq? #u8(1) #u8(1))
