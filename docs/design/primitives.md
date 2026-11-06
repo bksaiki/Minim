@@ -50,20 +50,41 @@ pointers (`minim_prim_apply`, ...) and never calls them:
 
 ## Library
 
-### Fixnums
+### Numbers
+
+Numbers are fixnums (exact) and flonums (inexact).  Arithmetic folds its
+arguments left to right; a flonum argument makes the result a flonum from
+there on, so a fixnum overflow before one still raises.
 
 | Call | Result |
 |---|---|
 | `(+ n ...)` | sum; `0` with no arguments |
 | `(- n)`, `(- n m ...)` | negation, or `n` minus the rest |
 | `(* n ...)` | product; `1` with no arguments |
-| `(quotient n m)` | `n / m`, truncated toward zero |
-| `(remainder n m)` | remainder with the sign of `n` |
-| `(number->string n [radix])` | the digits of `n` in radix 2, 8, 10 (default), or 16 |
+| `(/ n)`, `(/ n m ...)` | reciprocal, or `n` divided by the rest: exact if the fixnums divide evenly, else a flonum.  An exact zero divisor raises; an inexact one gives an infinity or NaN |
+| `(abs n)` | absolute value |
+| `(max n ...)`, `(min n ...)` | the greatest or least; inexact if any argument is, NaN if any is |
+| `(quotient n m)` | `n / m`, truncated toward zero; fixnums only |
+| `(remainder n m)` | remainder with the sign of `n`; fixnums only |
 | `(= n ...)` | whether all are equal |
 | `(< n ...)`, `(> ...)`, `(<= ...)`, `(>= ...)` | whether each adjacent pair is in order |
-| `(fixnum? x)` | whether `x` is a fixnum |
-| `(zero? n)` | whether `n` is 0 |
+| `(zero? n)`, `(positive? n)`, `(negative? n)` | how `n` compares with 0 |
+| `(odd? n)`, `(even? n)` | parity of the integer `n`, a fixnum or integral flonum |
+| `(floor n)`, `(ceiling n)`, `(truncate n)`, `(round n)` | `n` rounded; `round` to even.  A fixnum is itself |
+| `(exact n)`, `(inexact->exact n)` | the fixnum equal to `n`; raises `no exact representation` for a non-integer, infinity, or NaN, `fixnum out of range` past the range |
+| `(inexact n)`, `(exact->inexact n)` | the flonum nearest `n` |
+| `(number? x)`, `(complex? x)`, `(real? x)` | whether `x` is a number |
+| `(rational? x)`, `(integer? x)` | whether `x` is a finite, or integral, number |
+| `(exact? n)`, `(inexact? n)` | whether `n` is a fixnum, or flonum |
+| `(exact-integer? x)`, `(fixnum? x)` | whether `x` is a fixnum |
+| `(flonum? x)` | whether `x` is a flonum; Minim's own, after Chez, in `(minim)` |
+| `(finite? n)`, `(infinite? n)`, `(nan? n)` | `(scheme inexact)`'s tests of `n` |
+| `(number->string n [radix])` | `n` in radix 2, 8, 10 (default), or 16, as `write` prints it; a flonum's radix only 10 |
+| `(string->number s [radix])` | the number `s` denotes, as the reader reads it, in the radix (default 10) unless a prefix gives one; `#f` if it isn't one |
+
+Comparison is exact across types: a fixnum and a flonum compare as their
+true values, though a fixnum may not fit a double.  Every comparison with
+NaN is false.
 
 ### Chars
 
@@ -135,9 +156,9 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | Call | Result |
 |---|---|
 | `(eq? a b)` | whether `a` and `b` are the same object |
-| `(eqv? a b)` | same as `eq?` (they will differ for flonums and bignums) |
+| `(eqv? a b)` | same as `eq?`, except that flonums with the same bits are `eqv?`: `(eqv? 0.0 -0.0)` is `#f` |
 | `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else, records included, by `eqv?`.  Cyclic data loops forever |
-| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
+| `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values, hashing flonums' bits.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
 | `(boolean=? b ...)`, `(symbol=? s ...)` | whether the booleans, or symbols, are all the same |

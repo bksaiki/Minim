@@ -2,13 +2,30 @@
 (eq? 'a 'a)
 (eq? (cons 1 2) (cons 1 2))
 
-; eqv? is eq? until there are flonums and bignums.
+; eqv? is eq?, except that flonums are compared by their bits.
 (eqv? 'a 'a)
 (eqv? 1 1)
 (eqv? #\a #\a)
 (eqv? '() '())
 (eqv? (cons 1 2) (cons 1 2))
 (eqv? "a" "a")
+(eqv? 1.5 1.5)
+(eq? 1.5 1.5)
+(eqv? 0.0 -0.0)
+(eqv? +nan.0 +nan.0)
+(eqv? +inf.0 +inf.0)
+(eqv? 1 1.0)
+(eqv? 0.1 (string->number "0.1"))
+(memv 2.0 '(1 2 2.0 3))
+(assv 2.0 '((2 . a) (2.0 . b)))
+(case 2.0 ((1 2) 'exact) ((2.0) 'inexact) (else 'none))
+
+; equal? compares flonums as eqv? does.
+(equal? '(1.5 #(2.5)) (list 1.5 (vector 2.5)))
+(equal? 0.0 -0.0)
+(equal? 1 1.0)
+(= (equal-hash '(1.5 "a")) (equal-hash (list 1.5 "a")))
+(= (equal-hash 1.0) (equal-hash 1))
 
 ; equal? compares pairs, vectors, and strings by content.
 (equal? 1 1)

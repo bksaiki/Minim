@@ -1,6 +1,6 @@
 error: current-output-port: not an output port: #<input port string>
 error: current-input-port: not an input port: x
-error: bad # syntax: "λ"
+error: bad # syntax: "#λ"
 error: open-input-file: cannot open file: "load/no-such-file.scm"
 error: open-input-file: not a string: defs
 error: open-output-file: not a string: defs

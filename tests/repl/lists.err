@@ -8,7 +8,7 @@ error: car: not a pair: ()
 error: not a procedure: 5
 error: cdr: not a pair: 5
 error: make-list: bad length: -1
-error: <: not a fixnum: a
+error: <: not a number: a
 error: arity mismatch: #<procedure make-list>
 error: set-car!: not a pair: ()
 error: arity mismatch: #<procedure member>

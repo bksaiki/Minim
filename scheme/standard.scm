@@ -2,31 +2,33 @@
 
 (%define-system-library
  '(scheme base)
- '(* + - ... < <= = => > >= _ and append apply assoc assq assv begin binary-port? boolean=?
-   boolean? bytevector bytevector-append bytevector-copy bytevector-copy! bytevector-length
-   bytevector-u8-ref bytevector-u8-set! bytevector? caar cadr call-with-current-continuation
-   call-with-port call-with-values call/cc car case cdar cddr cdr char->integer char-ready?
-   char<=? char<? char=? char>=? char>? char? close-input-port close-output-port close-port
-   cond cons current-error-port current-input-port current-output-port define
-   define-record-type define-syntax define-values do dynamic-wind else eof-object
-   eof-object? eq? equal? eqv? error error-object-irritants error-object-message
-   error-object? file-error? flush-output-port for-each get-output-bytevector
-   get-output-string guard if input-port-open? input-port? integer->char lambda length let
-   let* let*-values let-syntax let-values letrec letrec* letrec-syntax list list->string
-   list->vector list-copy list-ref list-set! list-tail list? make-bytevector make-list
-   make-parameter make-string make-vector map member memq memv newline not null?
-   number->string open-input-bytevector open-input-string open-output-bytevector
-   open-output-string or output-port-open? output-port? pair? parameterize peek-char peek-u8
-   port? procedure? quasiquote quote quotient raise raise-continuable read-bytevector
-   read-bytevector! read-char read-error? read-line read-string read-u8 remainder reverse
-   set! set-car! set-cdr! string string->list string->symbol string->utf8 string->vector
-   string-append string-copy string-copy! string-fill! string-for-each string-length
-   string-map string-ref string-set! string<=? string<? string=? string>=? string>? string?
-   substring symbol->string symbol=? symbol? syntax-error syntax-rules textual-port?
-   u8-ready? unless unquote unquote-splicing utf8->string values vector vector->list
-   vector->string vector-append vector-copy vector-copy! vector-fill! vector-for-each
-   vector-length vector-map vector-ref vector-set! vector? when with-exception-handler
-   write-bytevector write-char write-string write-u8 zero?))
+ '(* + - ... / < <= = => > >= _ abs and append apply assoc assq assv begin binary-port?
+   boolean=? boolean? bytevector bytevector-append bytevector-copy bytevector-copy!
+   bytevector-length bytevector-u8-ref bytevector-u8-set! bytevector? caar cadr
+   call-with-current-continuation call-with-port call-with-values call/cc car case cdar cddr
+   cdr ceiling char->integer char-ready? char<=? char<? char=? char>=? char>? char?
+   close-input-port close-output-port close-port complex? cond cons current-error-port
+   current-input-port current-output-port define define-record-type define-syntax
+   define-values do dynamic-wind else eof-object eof-object? eq? equal? eqv? error
+   error-object-irritants error-object-message error-object? even? exact exact-integer?
+   exact? file-error? floor flush-output-port for-each get-output-bytevector
+   get-output-string guard if inexact inexact? input-port-open? input-port? integer->char
+   integer? lambda length let let* let*-values let-syntax let-values letrec letrec*
+   letrec-syntax list list->string list->vector list-copy list-ref list-set! list-tail list?
+   make-bytevector make-list make-parameter make-string make-vector map max member memq memv
+   min negative? newline not null? number->string number? odd? open-input-bytevector
+   open-input-string open-output-bytevector open-output-string or output-port-open?
+   output-port? pair? parameterize peek-char peek-u8 port? positive? procedure? quasiquote
+   quote quotient raise raise-continuable rational? read-bytevector read-bytevector!
+   read-char read-error? read-line read-string read-u8 real? remainder reverse round set!
+   set-car! set-cdr! string string->list string->number string->symbol string->utf8
+   string->vector string-append string-copy string-copy! string-fill! string-for-each
+   string-length string-map string-ref string-set! string<=? string<? string=? string>=?
+   string>? string? substring symbol->string symbol=? symbol? syntax-error syntax-rules
+   textual-port? truncate u8-ready? unless unquote unquote-splicing utf8->string values
+   vector vector->list vector->string vector-append vector-copy vector-copy! vector-fill!
+   vector-for-each vector-length vector-map vector-ref vector-set! vector? when
+   with-exception-handler write-bytevector write-char write-string write-u8 zero?))
 
 (%define-system-library '(scheme case-lambda) '(case-lambda))
 (%define-system-library
@@ -45,6 +47,7 @@
  '(call-with-input-file call-with-output-file delete-file file-exists?
    open-binary-input-file open-binary-output-file open-input-file open-output-file
    with-input-from-file with-output-to-file))
+(%define-system-library '(scheme inexact) '(finite? infinite? nan?))
 (%define-system-library '(scheme lazy) '(delay delay-force force make-promise promise?))
 (%define-system-library '(scheme load) '(load))
 (%define-system-library
@@ -57,26 +60,28 @@
 ;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
 (%define-system-library
  '(scheme r5rs)
- '(* + - ... < <= = => > >= and append apply assoc assq assv begin boolean? caaaar caaadr
-   caaar caadar caaddr caadr caar cadaar cadadr cadar caddar cadddr caddr cadr
+ '(* + - ... / < <= = => > >= abs and append apply assoc assq assv begin boolean? caaaar
+   caaadr caaar caadar caaddr caadr caar cadaar cadadr cadar caddar cadddr caddr cadr
    call-with-current-continuation call-with-input-file call-with-output-file
    call-with-values car case cdaaar cdaadr cdaar cdadar cdaddr cdadr cdar cddaar cddadr
-   cddar cdddar cddddr cdddr cddr cdr char->integer char-alphabetic? char-ci<=? char-ci<?
-   char-ci=? char-ci>=? char-ci>? char-downcase char-lower-case? char-numeric? char-ready?
-   char-upcase char-upper-case? char-whitespace? char<=? char<? char=? char>=? char>? char?
-   close-input-port close-output-port cond cons current-input-port current-output-port
-   define define-syntax delay display do dynamic-wind else eof-object? eq? equal? eqv?
-   for-each force if input-port? integer->char lambda length let let* let-syntax letrec
+   cddar cdddar cddddr cdddr cddr cdr ceiling char->integer char-alphabetic? char-ci<=?
+   char-ci<? char-ci=? char-ci>=? char-ci>? char-downcase char-lower-case? char-numeric?
+   char-ready? char-upcase char-upper-case? char-whitespace? char<=? char<? char=? char>=?
+   char>? char? close-input-port close-output-port complex? cond cons current-input-port
+   current-output-port define define-syntax delay display do dynamic-wind else eof-object?
+   eq? equal? eqv? even? exact->inexact exact? floor for-each force if inexact->exact
+   inexact? input-port? integer->char integer? lambda length let let* let-syntax letrec
    letrec-syntax list list->string list->vector list-ref list-tail list? load make-string
-   make-vector map member memq memv newline not null-environment null? number->string
-   open-input-file open-output-file or output-port? pair? peek-char procedure? quasiquote
-   quote quotient read read-char remainder reverse scheme-report-environment set! set-car!
-   set-cdr! string string->list string->symbol string-append string-ci<=? string-ci<?
+   make-vector map max member memq memv min negative? newline not null-environment null?
+   number->string number? odd? open-input-file open-output-file or output-port? pair?
+   peek-char positive? procedure? quasiquote quote quotient rational? read read-char real?
+   remainder reverse round scheme-report-environment set! set-car! set-cdr! string
+   string->list string->number string->symbol string-append string-ci<=? string-ci<?
    string-ci=? string-ci>=? string-ci>? string-copy string-fill! string-length string-ref
    string-set! string<=? string<? string=? string>=? string>? string? substring
-   symbol->string symbol? syntax-rules unquote unquote-splicing values vector vector->list
-   vector-fill! vector-length vector-ref vector-set! vector? with-input-from-file
-   with-output-to-file write write-char zero?))
+   symbol->string symbol? syntax-rules truncate unquote unquote-splicing values vector
+   vector->list vector-fill! vector-length vector-ref vector-set! vector?
+   with-input-from-file with-output-to-file write write-char zero?))
 
 ;; (minim), after Chez's (chezscheme): every public system binding, the
 ;; standard libraries' names and Minim's own.  R7RS puts each name in one
@@ -86,12 +91,12 @@
  '(minim)
  (append (%exported-names
           '((scheme base) (scheme case-lambda) (scheme char) (scheme cxr) (scheme eval)
-            (scheme file) (scheme lazy) (scheme load) (scheme process-context) (scheme read)
-            (scheme repl) (scheme write)))
+            (scheme file) (scheme inexact) (scheme lazy) (scheme load) (scheme process-context)
+            (scheme read) (scheme repl) (scheme write)))
          '(null-environment scheme-report-environment)
          '(collect collect-generation-radix collect-maximum-generation collect-nursery-bytes
-           define-library equal-hash filter fixnum? fold fold-right gensym import parameter?
-           string-hash letrec-values void)))
+           define-library equal-hash exact->inexact filter fixnum? flonum? fold fold-right
+           gensym import inexact->exact parameter? string-hash letrec-values void)))
 
 ;; The REPL and files see (minim), and nothing else of the system's.
 (%import! %interaction-env '((minim)))

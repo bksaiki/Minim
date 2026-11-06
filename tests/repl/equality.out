@@ -8,6 +8,21 @@
 #f
 #t
 #f
+#f
+#t
+#t
+#f
+#t
+(2.0 3)
+(2.0 . b)
+inexact
+#t
+#f
+#f
+#t
+#f
+#t
+#f
 #t
 #f
 #t

@@ -1,5 +1,4 @@
 FAIL 1671 (call-with-values (lambda () ((compose exact-integer-sqrt *) 12 75)) list) raised ("unbound variable" exact-integer-sqrt)
 FAIL 1677 (map (lambda (n) (expt n n)) '(1 2 3 4 5)) raised ("unbound variable" expt)
 FAIL 1711 (vector-map (lambda (n) (expt n n)) '#(1 2 3 4 5)) raised ("unbound variable" expt)
-FAIL 1755 (call-with-current-continuation (lambda (exit) (for-each (lambda (x) (if (negative? x) (exit x))) '(54 0 37 -3 245 19)) #t)) raised ("unbound variable" negative?)
-6.10 Control Features: 30 passed, 4 failed, 0 errors
+6.10 Control Features: 31 passed, 3 failed, 0 errors

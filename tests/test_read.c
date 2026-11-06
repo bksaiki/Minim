@@ -60,6 +60,58 @@ static void test_atoms(void) {
     CHECK(reads_as("#false", "#f"));
 }
 
+// Whether `s` reads as a symbol, as a number's look-alike does.
+static bool reads_symbol(const char *s) {
+    const char *p = s;
+    return minim_is_symbol(minim_read_string(&p));
+}
+
+static void test_numbers(void) {
+    // Decimals and their special values are flonums.
+    CHECK(reads_as("1.5", "1.5"));
+    CHECK(reads_as(".5", "0.5"));
+    CHECK(reads_as("1.", "1.0"));
+    CHECK(reads_as("-0.0", "-0.0"));
+    CHECK(reads_as("1e10", "10000000000.0"));
+    CHECK(reads_as("1E10", "10000000000.0"));
+    CHECK(reads_as("-2.5e-3", "-0.0025"));
+    CHECK(reads_as("+.5e+1", "5.0"));
+    CHECK(reads_as("+inf.0", "+inf.0"));
+    CHECK(reads_as("-inf.0", "-inf.0"));
+    CHECK(reads_as("+nan.0", "+nan.0"));
+    CHECK(reads_as("-nan.0", "+nan.0"));
+
+    // Prefixes, in either order and either case.
+    CHECK(reads_as("#x1F", "31"));
+    CHECK(reads_as("#XfF", "255"));
+    CHECK(reads_as("#x-ff", "-255"));
+    CHECK(reads_as("#b101", "5"));
+    CHECK(reads_as("#o17", "15"));
+    CHECK(reads_as("#d10", "10"));
+    CHECK(reads_as("#e1.0", "1"));
+    CHECK(reads_as("#e1e3", "1000"));
+    CHECK(reads_as("#e-0.0", "0"));
+    CHECK(reads_as("#i3", "3.0"));
+    CHECK(reads_as("#x#e10", "16"));
+    CHECK(reads_as("#e#x10", "16"));
+    CHECK(reads_as("#i#xff", "255.0"));
+    CHECK(reads_as("#x+inf.0", "+inf.0"));
+
+    // Each flonum the printer writes reads back as itself.
+    static const char *const printed[] = {
+        "0.1", "100.0", "123.456", "100000000000000000000.0", "1e21", "0.000001", "1e-7",
+        "1.5e-7", "5e-324", "1.7976931348623157e308", "0.30000000000000004",
+    };
+    for (size_t i = 0; i < sizeof(printed) / sizeof(printed[0]); i++)
+        CHECK(reads_as(printed[i], printed[i]));
+
+    // Look-alikes stay symbols.
+    static const char *const symbols[] = {"...", "+", "-", "1+", "+i", "1e", "e1", "1.2.3", "-e5",
+                                          "inf.0", "+inf.1"};
+    for (size_t i = 0; i < sizeof(symbols) / sizeof(symbols[0]); i++)
+        CHECK(reads_symbol(symbols[i]));
+}
+
 static void test_symbols(void) {
     CHECK(reads_as("foo", "foo"));
     CHECK(reads_as("Foo", "Foo"));
@@ -206,11 +258,20 @@ static void test_errors(void) {
     CHECK(read_fails_with("(a ,)", "eof after unquote"));
     CHECK(read_fails_with("1152921504606846976", "fixnum out of range"));
     CHECK(read_fails_with("-1152921504606846977", "fixnum out of range"));
+    CHECK(read_fails_with("#e1e19", "fixnum out of range"));
+    CHECK(read_fails_with("#x1000000000000000", "fixnum out of range"));
+    CHECK(read_fails_with("#e1.5", "no exact representation"));
+    CHECK(read_fails_with("#e+inf.0", "no exact representation"));
+    CHECK(read_fails_with("#x#x1", "bad # syntax"));
+    CHECK(read_fails_with("#e#i1", "bad # syntax"));
+    CHECK(read_fails_with("#x1.5", "bad # syntax"));
+    CHECK(read_fails_with("#b2", "bad # syntax"));
 }
 
 int main(void) {
     minim_init();
     test_atoms();
+    test_numbers();
     test_symbols();
     test_strings();
     test_continuations();

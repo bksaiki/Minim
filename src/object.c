@@ -72,6 +72,14 @@ minim_obj minim_make_vector(size_t n, minim_obj fill) {
     MINIM_RETURN((minim_obj)p | MINIM_TAG_TYPED);
 }
 
+// Word 0 is 0: a double there could look like the forwarding marker.
+minim_obj minim_make_flonum(double d) {
+    minim_obj *p = minim_heap_alloc(MINIM_FLONUM_SIZE);
+    p[0] = 0;
+    memcpy(p + 1, &d, sizeof(d));
+    return (minim_obj)p | MINIM_TAG_FLONUM;
+}
+
 minim_obj minim_make_string(size_t n, uint32_t c) {
     assert(n <= SIZE_MAX / MINIM_ALIGN && minim_is_scalar_value(c));
     minim_obj *p = minim_heap_alloc(minim_string_size(n));

@@ -1,9 +1,32 @@
 error: +: fixnum overflow
 error: -: fixnum overflow
 error: *: fixnum overflow
-error: +: not a fixnum: #t
+error: +: not a number: #t
 error: quotient: division by zero: 0
-error: <=: not a fixnum: a
-error: number->string: not a fixnum: a
+error: <=: not a number: a
+error: number->string: not a number: a
 error: number->string: bad radix: 3
 error: number->string: bad radix: x
+error: number->string: bad radix: 2
+error: string->number: not a string: a
+error: string->number: bad radix: 3
+error: string->number: fixnum out of range: "99999999999999999999"
+error: string->number: no exact representation: "#e1.5"
+error: /: fixnum overflow
+error: /: division by zero
+error: /: division by zero
+error: /: not a number: a
+error: >: not a number: a
+error: positive?: not a number: a
+error: odd?: not an integer: 3.5
+error: even?: not an integer: +inf.0
+error: abs: fixnum overflow
+error: max: not a number: a
+error: exact?: not a number: a
+error: nan?: not a number: "x"
+error: exact: no exact representation: 2.5
+error: exact: no exact representation: +inf.0
+error: exact: no exact representation: +nan.0
+error: exact: fixnum out of range: 1152921504606847000.0
+error: inexact: not a number: a
+error: floor: not a number: a

@@ -302,7 +302,7 @@ static void test_handled_errors(void) {
              " (if (= i 0) acc (loop (- i 1) (cons i acc)))))"
              " (list (catch (lambda () (deep %d))) (catch (lambda () (apply + 'x (iota %d)))))",
              gc_stressed() ? 1000 : 100000, 2 * MINIM_SEGMENT_SIZE);
-    CHECK(evals_to(buf, "(\"car: not a pair\" \"+: not a fixnum\")"));
+    CHECK(evals_to(buf, "(\"car: not a pair\" \"+: not a number\")"));
     CHECK_EQ(minim_stack_height(), before);
     CHECK_EQ(minim_gc.winders, MINIM_NIL);
     CHECK_EQ(minim_gc.handlers, MINIM_NIL);

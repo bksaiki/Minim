@@ -12,6 +12,7 @@
 #include "error.h"
 #include "heap.h"
 #include "minim.h"
+#include "number.h"
 #include "port.h"
 #include "symbol.h"
 
@@ -141,31 +142,18 @@ static int32_t parse_hex(size_t start, size_t end) {
     return minim_is_scalar_value(v) ? (int32_t)v : -1;
 }
 
-// Parses the token as a fixnum into `*x`; returns false if it isn't a number.
-static bool parse_fixnum(minim_obj *x) {
-    size_t i = 0;
-    bool negative = false;
-    if (token.len > 0 && (token.chars[0] == '+' || token.chars[0] == '-')) {
-        negative = token.chars[0] == '-';
-        i = 1;
-    }
-    if (i == token.len)
+// Parses the token as a number into `*x`; returns false if it isn't one.
+static bool read_number(minim_obj *x) {
+    switch (minim_parse_number(token.chars, token.len, 10, x)) {
+    case MINIM_PARSE_OK:
+        return true;
+    case MINIM_PARSE_NOT_NUMBER:
         return false;
-
-    uint64_t limit = (uint64_t)MINIM_FIXNUM_MAX + (negative ? 1 : 0);
-    uint64_t magnitude = 0;
-    for (; i < token.len; i++) {
-        uint32_t c = token.chars[i];
-        if (c < '0' || c > '9')
-            return false;
-        uint64_t d = c - '0';
-        if (magnitude > (limit - d) / 10)
-            read_error("fixnum out of range", token_string());
-        magnitude = 10 * magnitude + d;
+    case MINIM_PARSE_OUT_OF_RANGE:
+        read_error("fixnum out of range", token_string());
+    default:
+        read_error("no exact representation", token_string());
     }
-    // |MINIM_FIXNUM_MIN| fits in intptr_t, so negation can't overflow.
-    *x = minim_fixnum(negative ? -(intptr_t)magnitude : (intptr_t)magnitude);
-    return true;
 }
 
 static bool is_intraline_whitespace(int32_t c) {
@@ -370,13 +358,17 @@ static minim_obj read_hash(source *in, int32_t c) {
 
     unread(in, c);
     token.len = 0;
+    token_push('#');
     read_until_delimiter(in);
-    if (token_is("t") || token_is("true"))
+    if (token_is("#t") || token_is("#true"))
         return MINIM_TRUE;
-    if (token_is("f") || token_is("false"))
+    if (token_is("#f") || token_is("#false"))
         return MINIM_FALSE;
-    if (token_is("u8") && next(in) == '(')
+    if (token_is("#u8") && next(in) == '(')
         return read_bytevector(in);
+    minim_obj x;
+    if (read_number(&x))
+        return x;
     read_error("bad # syntax", token_string());
 }
 
@@ -446,7 +438,7 @@ static int read_item_from(source *in, int32_t c, minim_obj *x) {
         read_until_delimiter(in);
         if (token_is("."))
             return DOT;
-        if (!parse_fixnum(x))
+        if (!read_number(x))
             *x = minim_intern(token_string());
         return ITEM;
     }

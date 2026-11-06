@@ -3,6 +3,7 @@
  * Tests for the printer.
  */
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,6 +33,35 @@ static void test_immediates(void) {
     CHECK(prints_as(MINIM_VOID, "#<void>"));
     CHECK(prints_as(MINIM_EOF, "#<eof>"));
     CHECK(prints_as(MINIM_UNBOUND, "#<unbound>"));
+}
+
+// Flonums print in the fewest digits that read back as them.
+static void test_flonums(void) {
+    static const struct {
+        double d;
+        const char *s;
+    } cases[] = {
+        {1.0, "1.0"},
+        {0.0, "0.0"},
+        {-0.0, "-0.0"},
+        {0.1, "0.1"},
+        {-2.5, "-2.5"},
+        {100.0, "100.0"},
+        {123.456, "123.456"},
+        {1e20, "100000000000000000000.0"},
+        {1e21, "1e21"},
+        {1e-6, "0.000001"},
+        {1e-7, "1e-7"},
+        {1.5e-7, "1.5e-7"},
+        {5e-324, "5e-324"},
+        {1.7976931348623157e308, "1.7976931348623157e308"},
+        {0.1 + 0.2, "0.30000000000000004"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+        CHECK(prints_as(minim_make_flonum(cases[i].d), cases[i].s));
+    CHECK(prints_as(minim_make_flonum(INFINITY), "+inf.0"));
+    CHECK(prints_as(minim_make_flonum(-INFINITY), "-inf.0"));
+    CHECK(prints_as(minim_make_flonum(NAN), "+nan.0"));
 }
 
 static void test_chars(void) {
@@ -215,6 +245,7 @@ static void test_port(void) {
 int main(void) {
     minim_init();
     test_immediates();
+    test_flonums();
     test_chars();
     test_strings();
     test_symbols();

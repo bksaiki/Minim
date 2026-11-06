@@ -13,20 +13,23 @@ objects are 16-byte aligned, so pointers carry the tag in their low bits.
 |---|---|---|
 | `000` | fixnum | 61-bit signed integer, `n << 3` |
 | `001` | pair | `[car, cdr]` |
+| `010` | flonum | `[0, double]`, a boxed IEEE double |
 | `011` | symbol | `[name, value, plist]` |
 | `101` | closure | `[code, env, name]` |
 | `110` | immediate | `#f`, `#t`, `'()`, void, eof, unbound, chars, forward marker |
 | `111` | typed object | first word is a header |
-| `010`, `100` | | reserved (flonum, -) |
+| `100` | | reserved |
 
 Typed objects (vectors, strings, bytevectors, primitives, continuations,
 error objects, records, ports) start with a header, `(length << 4) | (immutable << 3) | type`.
 Error objects have type 1, the first odd code; an odd code can't equal the
-forwarding marker.  Every object is at least 2 words, so any object can hold
+forwarding marker.  A flonum's word 0 is 0 for the same reason: a double's
+bits could equal the marker.  Every object is at least 2 words, so any object can hold
 a forwarding record.
 
 ```
 pair     [ car | cdr ]                        16 B
+flonum   [ 0 | double ]                       16 B
 symbol   [ name : string | value | plist ]    24 B, rounded up to 32
 vector   [ header | e0 | e1 | ... ]           8 + 8n B, rounded up to 16
 string   [ header | c0 c1 ... (uint32_t) ]    8 + 4n B, rounded up to 16
@@ -81,11 +84,12 @@ the last one.  Generation 0, the nursery, is one space; each old generation,
 |---|---|---|
 | nursery | 0 | every newly allocated object, all kinds interleaved |
 | pair | 1 and up | pairs |
+| flonum | 1 and up | flonums |
 | closure | 1 and up | closures |
 | symbol | 1 and up | symbols |
 | typed | 1 and up | typed objects |
 
-Pairs, symbols, and closures have no header, so a space of mixed kinds can't
+Pairs, flonums, symbols, and closures have no header, so a space of mixed kinds can't
 be parsed; kinds also differ in lifetime and access, so separating them
 keeps each space dense.
 The collector never parses the nursery; it sorts survivors by kind as it
@@ -122,7 +126,7 @@ Each collection is Cheney-style:
    generations.
 3. Scans what was copied, from where the target's spaces ended before the
    collection, until no scan cursor moves.  Pairs are two traced words,
-   symbols and closures three; a typed object is traced by its header
+   symbols and closures three, flonums none; a typed object is traced by its header
    (vector elements are; string chars, bytevector bytes, and a primitive's
    C function pointer aren't).
 4. Releases the from-space chunks.

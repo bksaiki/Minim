@@ -1,7 +1,7 @@
 /**
  * @file
  * Tests for the constructors and accessors of closures, primitives, records,
- * and bytevectors.
+ * bytevectors, and flonums.
  */
 
 #include "minim.h"
@@ -86,6 +86,15 @@ static void test_bytevector(void) {
     CHECK(!minim_is_bytevector(minim_make_vector(1, MINIM_NIL)));
 }
 
+static void test_flonum(void) {
+    minim_obj f = minim_make_flonum(-2.5);
+    CHECK(minim_is_flonum(f));
+    CHECK_EQ(minim_tag(f), MINIM_TAG_FLONUM);
+    CHECK_EQ(count_predicates(f), 1);
+    CHECK(minim_flonum_value(f) == -2.5);
+    CHECK(!minim_is_flonum(minim_fixnum(2)));
+}
+
 static void test_not_procedures(void) {
     minim_obj v = minim_make_vector(0, MINIM_NIL);
     CHECK(!minim_is_procedure(v));
@@ -129,6 +138,7 @@ int main(void) {
     test_primitive();
     test_record();
     test_bytevector();
+    test_flonum();
     test_not_procedures();
     test_gc();
     minim_shutdown();
