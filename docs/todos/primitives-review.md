@@ -281,6 +281,25 @@ Tests: the existing `ports` REPL test and `test_port`.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'ports|port|boot|r7rs'
 ```
 
+**Done.**  The moved procedures keep their `%` names in `ports.scm`, so the
+wrappers that default the port are unchanged; they check their port with
+`%check-open`, as C's `check_open`, and their ranges and counts with
+`sequences.scm`'s helpers and a new `%check-count`.  `reserve_bytes`
+(`src/port.c`) keeps its general size, though `write_byte`, its last
+caller, asks for one byte.  `tests/repl/ports.scm` gained `read-line` over
+`\r\n` and `\r`, and four argument errors; the rest of its output is
+unchanged.
+
+Benchmarks against `main`, release: the suite within noise (11 runs; fib
+0.492 to 0.498 s median, expand 0.398 to 0.408).  Microbenchmarks, 3 runs
+each:
+
+| Loop | `main` | Phase 5 | Slower |
+|---|---|---|---|
+| `read-line` over a 20,000-line, 1 MB file | 0.04 s | 1.2 s | 30x |
+| 100,000 `(write-string "hello world" out)` | 0.13 s | 1.2 s | 9x |
+| 10 `read-bytevector` of 100,000 bytes | 0.01 s | 1.1 s | 100x |
+
 ### Phase 6 - Investigate the moved procedures' overhead
 
 An investigation, not a fixed change: Phases 2 to 5 accept the moved

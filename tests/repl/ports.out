@@ -37,6 +37,7 @@
 #<eof>
 #<eof>
 ""
+("a" "b" "c" #<eof>)
 "λabcdefghijklmnopqrstuvwxyz1231\n"
 "λabcdefghijklmnopqrstuvwxyz1231\n"
 (#<input port stdin> #<output port stdout> #<output port stderr>)

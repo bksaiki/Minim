@@ -1,5 +1,119 @@
-;;; Ports (R7RS 6.13): the current ports, and the procedures whose port
-;;; argument defaults to one.
+;;; Ports (R7RS 6.13): the current ports, the procedures whose port
+;;; argument defaults to one, and those over reading and writing a char or
+;;; byte at a time.
+
+;; Raises `msg` with `p` unless it is a port open for input if `input?`, else
+;; for output, and binary if `binary?`, else textual.
+(define (%check-open p input? binary? msg)
+  (unless (and (if input? (input-port? p) (output-port? p))
+               (if input? (input-port-open? p) (output-port-open? p))
+               (eq? (binary-port? p) binary?))
+    (error msg p)))
+
+;; Raises `msg` with `k` unless it is a non-negative fixnum.
+(define (%check-count k msg)
+  (unless (and (fixnum? k) (>= k 0))
+    (error msg k)))
+
+(define (close-input-port p)
+  (%check input-port? p "close-input-port: not an input port")
+  (close-port p))
+
+(define (close-output-port p)
+  (%check output-port? p "close-output-port: not an output port")
+  (close-port p))
+
+;; The next line from `port`, without its \n, \r, or \r\n; the eof object at
+;; the end.
+(define (%read-line port)
+  (%check-open port #t #f "read-line: not an open textual input port")
+  (let ((line (open-output-string)))
+    (let loop ((c (%read-char port))
+               (n 0))
+      (cond ((eof-object? c)
+             (if (= n 0) c (get-output-string line)))
+            ((or (char=? c #\newline) (char=? c #\return))
+             (when (and (char=? c #\return) (eqv? (%peek-char port) #\newline))
+               (%read-char port))
+             (get-output-string line))
+            (else
+             (%write-char c line)
+             (loop (%read-char port) (+ n 1)))))))
+
+;; Up to `k` chars from `port`, or the eof object if there are none before
+;; the end.
+(define (%read-string k port)
+  (%check-count k "read-string: not a non-negative fixnum")
+  (%check-open port #t #f "read-string: not an open textual input port")
+  (let ((chars (open-output-string)))
+    (let loop ((n 0))
+      (let ((c (if (< n k) (%read-char port) #f)))
+        (cond ((not c) (get-output-string chars))
+              ((eof-object? c) (if (= n 0) c (get-output-string chars)))
+              (else
+               (%write-char c chars)
+               (loop (+ n 1))))))))
+
+;; Writes the chars of `s` from `start` to `end`, #f for its end, to `port`.
+(define (%write-string s port start end)
+  (%check string? s "write-string: not a string")
+  (%check-open port #f #f "write-string: not an open textual output port")
+  (let ((end (if end
+                 (begin
+                   (%check-position end (string-length s) "write-string: bad end")
+                   end)
+                 (string-length s))))
+    (%check-position start end "write-string: bad start")
+    (do ((i start (+ i 1)))
+        ((= i end))
+      (%write-char (string-ref s i) port))))
+
+;; Up to `k` bytes from `port`, or the eof object if there are none before
+;; the end.
+(define (%read-bytevector k port)
+  (%check-count k "read-bytevector: not a non-negative fixnum")
+  (%check-open port #t #t "read-bytevector: not an open binary input port")
+  (let ((bytes (open-output-bytevector)))
+    (let loop ((n 0))
+      (let ((b (if (< n k) (%read-u8 port) #f)))
+        (cond ((not b) (get-output-bytevector bytes))
+              ((eof-object? b) (if (= n 0) b (get-output-bytevector bytes)))
+              (else
+               (%write-u8 b bytes)
+               (loop (+ n 1))))))))
+
+;; Reads into `bv`, from `start` to `end`, from `port`; returns how many
+;; bytes, or the eof object if there are none before the end.
+(define %read-bytevector!
+  (case-lambda
+    ((bv port) (%read-bytevector! bv port 0))
+    ((bv port start)
+     (%read-bytevector! bv port start (%length-or-0 bv bytevector? bytevector-length)))
+    ((bv port start end)
+     (%check bytevector? bv "read-bytevector!: not a bytevector")
+     (%check-open port #t #t "read-bytevector!: not an open binary input port")
+     (%check-range start end (bytevector-length bv) "read-bytevector!: bad index")
+     (let loop ((i start))
+       (let ((b (if (< i end) (%read-u8 port) #f)))
+         (cond ((not b) (- i start))
+               ((eof-object? b) (if (= i start) b (- i start)))
+               (else
+                (bytevector-u8-set! bv i b)
+                (loop (+ i 1)))))))))
+
+;; Writes the bytes of `bv` from `start` to `end` to `port`.
+(define %write-bytevector
+  (case-lambda
+    ((bv port) (%write-bytevector bv port 0))
+    ((bv port start)
+     (%write-bytevector bv port start (%length-or-0 bv bytevector? bytevector-length)))
+    ((bv port start end)
+     (%check bytevector? bv "write-bytevector: not a bytevector")
+     (%check-open port #f #t "write-bytevector: not an open binary output port")
+     (%check-range start end (bytevector-length bv) "write-bytevector: bad index")
+     (do ((i start (+ i 1)))
+         ((= i end))
+       (%write-u8 (bytevector-u8-ref bv i) port)))))
 
 ;; A parameter holding a current port, initially `port`, which only ports
 ;; satisfying `ok?` may replace; `msg` is the error otherwise.

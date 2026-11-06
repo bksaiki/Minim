@@ -18,6 +18,8 @@ error: write-char: not a char: 1
 error: read-string: not a non-negative fixnum: -1
 error: write-string: bad start: 2
 error: write-string: bad end: 4
+error: read-string: not a non-negative fixnum: x
+error: write-string: not a string: 1
 error: arity mismatch: #<procedure read-char>
 error: read: not an open textual input port: #<output port string>
 error: write: not an open textual output port: #<input port string>
@@ -40,3 +42,5 @@ error: open-input-bytevector: not a bytevector: "abc"
 error: read-u8: not an open binary input port: #<binary input port bytevector>
 error: arity mismatch: #<procedure read-bytevector!>
 error: arity mismatch: #<procedure write-bytevector>
+error: read-bytevector!: not a bytevector: x
+error: write-bytevector: not an open binary output port: #<output port string>
