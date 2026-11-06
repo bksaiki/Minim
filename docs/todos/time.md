@@ -67,6 +67,15 @@ report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'time|libraries|r7rs'
 ```
 
+**Done.**  `minim_clock_init` (`src/system.h`), first in `minim_init`,
+records the start.  The Windows branch is `_WIN32`, not `_MSC_VER` as the
+CRT wrappers are, since it is the OS's clock; it divides before scaling, so
+`count * 1e9` can't overflow.  `system.c` defines `_POSIX_C_SOURCE`, as
+`main.c` does, for `clock_gettime` under `-std=c17`.  The library test is in
+`time.scm`, not `libraries.scm`; it also checks that the clocks take no
+arguments.  Report: 6.14 7 to 11 passed; its last 2 failures are
+`features`.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (System), `r7rs-small.md` (coverage:
