@@ -61,14 +61,16 @@
             ((null? (cdr lists)) (car lists))
             (else (append2 (car lists) (loop (cdr lists))))))))
 
-;; The first pair of `lst` whose car matches `x` under `same?`, or #f.
+;; The first pair of `lst` whose car matches `x` under `same?`, by default
+;; `equal?`, or #f.
 (define member
-  (lambda (x lst . compare)
-    (let ((same? (if (null? compare) equal? (car compare))))
-      (let loop ((lst lst))
-        (cond ((null? lst) #f)
-              ((same? x (car lst)) lst)
-              (else (loop (cdr lst))))))))
+  (case-lambda
+    ((x lst) (member x lst equal?))
+    ((x lst same?)
+     (let loop ((lst lst))
+       (cond ((null? lst) #f)
+             ((same? x (car lst)) lst)
+             (else (loop (cdr lst))))))))
 
 (define memq
   (lambda (x lst) (member x lst eq?)))
@@ -76,14 +78,16 @@
 (define memv
   (lambda (x lst) (member x lst eqv?)))
 
-;; The first pair of `alist` whose car matches `x` under `same?`, or #f.
+;; The first pair of `alist` whose car matches `x` under `same?`, by default
+;; `equal?`, or #f.
 (define assoc
-  (lambda (x alist . compare)
-    (let ((same? (if (null? compare) equal? (car compare))))
-      (let loop ((alist alist))
-        (cond ((null? alist) #f)
-              ((same? x (caar alist)) (car alist))
-              (else (loop (cdr alist))))))))
+  (case-lambda
+    ((x alist) (assoc x alist equal?))
+    ((x alist same?)
+     (let loop ((alist alist))
+       (cond ((null? alist) #f)
+             ((same? x (caar alist)) (car alist))
+             (else (loop (cdr alist))))))))
 
 (define assq
   (lambda (x alist) (assoc x alist eq?)))

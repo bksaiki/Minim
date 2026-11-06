@@ -38,3 +38,5 @@ error: get-output-bytevector: not a bytevector output port: #<output port string
 error: get-output-string: not a string output port: #<binary output port bytevector>
 error: open-input-bytevector: not a bytevector: "abc"
 error: read-u8: not an open binary input port: #<binary input port bytevector>
+error: arity mismatch: #<procedure read-bytevector!>
+error: arity mismatch: #<procedure write-bytevector>

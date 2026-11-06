@@ -211,6 +211,8 @@ bout
 (define closed-bin (open-input-bytevector #u8(1)))
 (close-port closed-bin)
 (read-u8 closed-bin)
+(read-bytevector! buf bin 0 1 2)
+(write-bytevector #u8(1) bout 0 1 2)
 
 ; Closing the standard input port ends the REPL.
 (close-port (current-input-port))

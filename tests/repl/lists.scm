@@ -109,3 +109,5 @@ e
 (make-list 'a)
 (make-list 1 2 3)
 (list-set! e 3 'x)
+(member 1 '(1) eq? 'x)
+(assoc 1 '((1)) eq? 'x)

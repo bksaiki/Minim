@@ -119,6 +119,9 @@ extra argument, the error naming them.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'lists|ports|r7rs' && ctest --preset stress -R 'lists|ports'
 ```
 
+**Done.**  The two-argument clauses of `member` and `assoc` call the
+three-argument one with `equal?`.  No report changed.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (Equality, System), `prelude.md` (the list

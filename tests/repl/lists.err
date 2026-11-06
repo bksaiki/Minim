@@ -11,3 +11,5 @@ error: make-list: bad length: -1
 error: <: not a fixnum: a
 error: arity mismatch: #<procedure make-list>
 error: set-car!: not a pair: ()
+error: arity mismatch: #<procedure member>
+error: arity mismatch: #<procedure assoc>
