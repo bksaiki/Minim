@@ -495,17 +495,6 @@
   (vector-set! top 2 (cons label (vector-ref top 2)))
   label)
 
-(define (%expand-define form top)
-  (let* ((x (%define-procedure form))
-         (name (if (%binding-form? x) (%top-define! top (cadr x)) (%bad-syntax x))))
-    (list 'define name (%expand-expr (caddr x) top))))
-
-(define (%expand-define-values x top)
-  (let ((formals (if (eq? (%length x 0) 3)
-                     (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)
-                     (%bad-syntax x))))
-    (list 'define-values formals (%expand-expr (caddr x) top))))
-
 ;; Binds the identifier `id` to the macro `spec` denotes, in `top`.
 (define (%top-define-macro! top id spec)
   (%top-bind! top id (%transformer spec top)))
@@ -520,18 +509,45 @@
       (%bad-syntax x))
   '(begin))
 
+;; The core forms of the top-level forms `forms`, in the top-level environment
+;; `top`: every definition is bound before any form is expanded, so one may
+;; refer to one further down.  The definitions and expressions run in order.
+;; `import` and `define-library` run as they are met if `imports?`, and are
+;; expressions otherwise.
+(define (%expand-top-forms forms top imports?)
+  ;; `items` collects, in reverse, a procedure expanding each form.
+  (define (scan forms items)
+    (if (null? forms)
+        (reverse items)
+        (let* ((x (%expand-head (car forms) top))
+               (k (%keyword x top))
+               (rest (cdr forms)))
+          (case (if (and (not imports?) (memq k '(import define-library))) #f k)
+            ((begin) (if (%length x 0) (scan (append (cdr x) rest) items) (%bad-syntax x)))
+            ((define)
+             (let ((d (%define-procedure x)))
+               (if (%binding-form? d)
+                   (let ((name (%top-define! top (cadr d))))
+                     (scan rest (cons (lambda ()
+                                        (list 'define name (%expand-expr (caddr d) top)))
+                                      items)))
+                   (%bad-syntax x))))
+            ((define-values)
+             (if (eq? (%length x 0) 3)
+                 (let ((formals (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)))
+                   (scan rest (cons (lambda () (list 'define-values formals
+                                                     (%expand-expr (caddr x) top)))
+                                    items)))
+                 (%bad-syntax x)))
+            ((define-syntax) (%expand-define-syntax x top) (scan rest items))
+            ((import) (%import! top (cdr x)) (scan rest items))
+            ((define-library)
+             (let ((code (%expand-define-library x)))
+               (scan rest (cons (lambda () code) items))))
+            (else (scan rest (cons (lambda () (%expand-expr x top)) items)))))))
+  (map (lambda (item) (item)) (scan forms '())))
+
 ;; Expands the top-level form `x` in the top-level environment `top`.
 (define (%expand-top x top)
-  (let* ((y (%expand-head x top))
-         (k (%keyword y top)))
-    (case k
-      ((begin)
-       (if (%length y 0)
-           (cons 'begin (map (lambda (z) (%expand-top z top)) (cdr y)))
-           (%bad-syntax y)))
-      ((define) (%expand-define y top))
-      ((define-values) (%expand-define-values y top))
-      ((define-syntax) (%expand-define-syntax y top))
-      ((import) (%import! top (cdr y)) '(begin))
-      ((define-library) (%expand-define-library y))
-      (else (%expand-expr y top)))))
+  (let ((code (%expand-top-forms (list x) top #t)))
+    (if (and (pair? code) (null? (cdr code))) (car code) (cons 'begin code))))

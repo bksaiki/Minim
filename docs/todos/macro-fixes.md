@@ -72,6 +72,17 @@ The 4.3 report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'top-level|syntax-rules|libraries|boot|r7rs'
 ```
 
+**Done.**  The shared scan is `%expand-top-forms forms top imports?` in
+`expander.scm`, returning the list of core forms; `%expand-library-body`
+wraps it in a `begin`.  `%expand-top` scans its one form and unwraps a
+single result, so a form that isn't a `begin` expands as before and the
+boot file is unchanged but for the moved code.  Without `imports?`,
+`import` and `define-library` are expressions, as in library bodies
+before.  `%expand-define` and `%expand-define-values` went, now unused.
+`tools/boot.scm` still splices a `begin` form by form, which the prelude
+doesn't rely on.  The 4.3 report: 25 passed, 0 failed, 1 error (the
+ellipsis, Phase 2).
+
 ### Phase 2 - An ellipsis among literals
 
 - `scheme/expander.scm`: `ellipsis?`.  `scheme/prelude.boot` regenerated.
