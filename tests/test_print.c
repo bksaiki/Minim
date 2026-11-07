@@ -9,6 +9,7 @@
 
 #include "gc.h"
 #include "minim.h"
+#include "read.h"
 #include "test.h"
 
 static minim_obj list2(minim_obj a, minim_obj b) {
@@ -88,9 +89,59 @@ static void test_strings(void) {
     CHECK(prints_as(minim_string_from_cstr("caf\u00e9 \U0001F600"), "\"caf\u00e9 \U0001F600\""));
 }
 
+// Whether the symbol named `name` is written as `expect` and reads back as
+// itself.
+static bool writes_symbol(const char *name, const char *expect) {
+    minim_obj sym = minim_intern_cstr(name);
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&sym, &x);
+    bool ok = prints_as(sym, expect);
+    const char *p = expect;
+    x = minim_read_string(&p);
+    if (x != sym) {
+        fprintf(stderr, "`%s` didn't read back as itself\n", expect);
+        ok = false;
+    }
+    MINIM_RETURN(ok);
+}
+
 static void test_symbols(void) {
-    CHECK(prints_as(minim_intern_cstr("foo"), "foo"));
-    CHECK(prints_as(minim_intern_cstr("caf\u00e9"), "caf\u00e9"));
+    // Names that read back as themselves are written bare.
+    static const char *const bare[] = {
+        "foo", "caf\u00e9", "\u03bb", "a", "+", "-", "...", "->x", "1+", "a#b", "a,b", "a'b",
+    };
+    for (size_t i = 0; i < sizeof(bare) / sizeof(*bare); i++)
+        CHECK(writes_symbol(bare[i], bare[i]));
+
+    // Others are written in bars.
+    static const struct {
+        const char *name;
+        const char *written;
+    } barred[] = {
+        {"", "||"},
+        {".", "|.|"},
+        {"1", "|1|"},
+        {"+3", "|+3|"},
+        {"-.4", "|-.4|"},
+        {"+inf.0", "|+inf.0|"},
+        {"1152921504606846976", "|1152921504606846976|"},
+        {"+i", "|+i|"},
+        {"-i", "|-i|"},
+        {"a b", "|a b|"},
+        {"a(b", "|a(b|"},
+        {"a\"b", "|a\"b|"},
+        {"a;b", "|a;b|"},
+        {"a|b", "|a\\|b|"},
+        {"a\\b", "|a\\\\b|"},
+        {"#a", "|#a|"},
+        {"'a", "|'a|"},
+        {"`a", "|`a|"},
+        {",a", "|,a|"},
+        {"a\nb", "|a\\nb|"},
+        {"a\x01" "b", "|a\\x1;b|"},
+    };
+    for (size_t i = 0; i < sizeof(barred) / sizeof(*barred); i++)
+        CHECK(writes_symbol(barred[i].name, barred[i].written));
 }
 
 static void test_pairs(void) {

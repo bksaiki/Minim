@@ -34,11 +34,12 @@ static int digit_value(uint32_t c, unsigned radix) {
     return d >= 0 && (unsigned)d < radix ? d : -1;
 }
 
-// Whether the `n` chars `s` are the ASCII string `t`.
+// Whether the `n` chars `s` are the lowercase ASCII string `t`, ignoring case.
 static bool chars_are(const uint32_t *s, size_t n, const char *t) {
     size_t i = 0;
     for (; i < n && t[i] != '\0'; i++) {
-        if (s[i] != (unsigned char)t[i])
+        uint32_t c = s[i] >= 'A' && s[i] <= 'Z' ? s[i] + ('a' - 'A') : s[i];
+        if (c != (unsigned char)t[i])
             return false;
     }
     return i == n && t[i] == '\0';
@@ -120,6 +121,8 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
                 len++;
         if (len == 0 || sign + len != n)
             return MINIM_PARSE_NOT_NUMBER;
+        if (x == NULL)
+            return MINIM_PARSE_OK;
 
         if (integer && exactness != 'i') {
             uint64_t limit = (uint64_t)MINIM_FIXNUM_MAX + (negative ? 1 : 0);
@@ -144,6 +147,8 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
         }
     }
 
+    if (x == NULL)
+        return MINIM_PARSE_OK;
     if (exactness == 'e')
         return exact_of(d, x);
     *x = minim_make_flonum(d);

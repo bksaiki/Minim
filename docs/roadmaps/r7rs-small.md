@@ -245,8 +245,8 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.11 Exceptions | 29 | 1 | 0 |
 | 6.12 Environments and evaluation | 1 | 3 | 0 |
 | 6.13 Input and output | 61 | 1 | 0 |
-| Read syntax | 85 | 6 | 2 |
-| Numeric syntax | 121 | 20 | 37 |
+| Read syntax | 90 | 3 | 0 |
+| Numeric syntax | 124 | 17 | 37 |
 | 6.14 System interface | 11 | 2 | 0 |
 | **Total** | 991 | 134 | 63 |
 

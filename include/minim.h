@@ -753,7 +753,8 @@ enum {
     MINIM_PORT_OUTPUT = 0x2,
     MINIM_PORT_FILE = 0x4,     ///< over a FILE *, else over a string or bytevector
     MINIM_PORT_CLOSED = 0x8,
-    MINIM_PORT_BINARY = 0x10,  ///< of bytes, else of chars
+    MINIM_PORT_BINARY = 0x10,     ///< of bytes, else of chars
+    MINIM_PORT_FOLD_CASE = 0x20,  ///< the reader folds identifiers (`#!fold-case`)
 };
 
 /** The flags of the port `p`. */

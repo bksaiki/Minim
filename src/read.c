@@ -15,6 +15,7 @@
 #include "number.h"
 #include "port.h"
 #include "symbol.h"
+#include "unicode.h"
 
 // Characters of the token being read.  Static, so an error can't leak it.
 static struct {
@@ -33,15 +34,36 @@ static void token_push(uint32_t c) {
     token.chars[token.len++] = c;
 }
 
-static bool token_is(const char *s) {
+// Whether the token is `s`; if `ci`, in any ASCII case, `s` being lowercase.
+static bool token_is(const char *s, bool ci) {
     size_t n = strlen(s);
     if (token.len != n)
         return false;
     for (size_t i = 0; i < n; i++) {
-        if (token.chars[i] != (unsigned char)s[i])
+        uint32_t c = token.chars[i];
+        if (ci && c >= 'A' && c <= 'Z')
+            c += 'a' - 'A';
+        if (c != (unsigned char)s[i])
             return false;
     }
     return true;
+}
+
+// Replaces the token with its full case folding.
+static void fold_token(void) {
+    size_t n = token.len;
+    uint32_t *chars = malloc(n * sizeof(*chars) + 1);
+    if (chars == NULL)
+        minim_out_of_memory();
+    memcpy(chars, token.chars, n * sizeof(*chars));
+    token.len = 0;
+    for (size_t i = 0; i < n; i++) {
+        uint32_t out[MINIM_UNICODE_MAX_MAPPING];
+        size_t m = minim_unicode_full_foldcase(chars, n, i, out);
+        for (size_t j = 0; j < m; j++)
+            token_push(out[j]);
+    }
+    free(chars);
 }
 
 static minim_obj token_string(void) {
@@ -59,8 +81,9 @@ static bool is_whitespace(int32_t c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
 
-static bool is_delimiter(int32_t c) {
-    return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';';
+bool minim_is_delimiter(int32_t c) {
+    return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';'
+           || c == '|';
 }
 
 // Where the reader reads from: a port, through a reference its caller roots,
@@ -69,7 +92,13 @@ typedef struct source {
     const minim_obj *port;      // NULL for a string
     const unsigned char *str;   // next byte of the string
     const unsigned char *prev;  // start of the string's last code point read
+    bool fold;                  // for a string, whether `#!fold-case` is in effect
 } source;
+
+// Whether identifiers and char names read from `in` are folded.
+static bool folding(const source *in) {
+    return in->port != NULL ? minim_port_flags(*in->port) & MINIM_PORT_FOLD_CASE : in->fold;
+}
 
 // Reads one code point, or returns -1 at the end.
 static int32_t next(source *in) {
@@ -96,7 +125,7 @@ static void unread(source *in, int32_t c) {
 static void read_until_delimiter(source *in) {
     for (;;) {
         int32_t c = next(in);
-        if (is_delimiter(c)) {
+        if (minim_is_delimiter(c)) {
             unread(in, c);
             return;
         }
@@ -177,14 +206,16 @@ static void skip_continuation(source *in, int32_t c) {
     unread(in, c);
 }
 
-static minim_obj read_string(source *in) {
+// Reads into the token up to the unescaped `close`, a string's or a `|...|`
+// symbol's, with the string escapes; raises `eof_msg` at the end of input.
+static void read_quoted(source *in, int32_t close, const char *eof_msg) {
     token.len = 0;
     for (;;) {
         int32_t c = next(in);
         if (c < 0)
-            read_error("eof in string", MINIM_VOID);
-        if (c == '"')
-            return token_string();
+            read_error(eof_msg, MINIM_VOID);
+        if (c == close)
+            return;
         if (c != '\\') {
             token_push((uint32_t)c);
             continue;
@@ -232,11 +263,13 @@ static minim_obj read_char(source *in) {
 
     if (token.len == 1)
         return minim_char((uint32_t)c);
+    if (folding(in))
+        fold_token();
     for (const minim_char_name *n = minim_char_names; n->name != NULL; n++) {
-        if (token_is(n->name))
+        if (token_is(n->name, false))
             return minim_char(n->c);
     }
-    int32_t v = c == 'x' ? parse_hex(1, token.len) : -1;
+    int32_t v = token.chars[0] == 'x' ? parse_hex(1, token.len) : -1;
     if (v < 0)
         read_error("bad char", token_string());
     return minim_char((uint32_t)v);
@@ -360,16 +393,32 @@ static minim_obj read_hash(source *in, int32_t c) {
     token.len = 0;
     token_push('#');
     read_until_delimiter(in);
-    if (token_is("#t") || token_is("#true"))
+    if (token_is("#t", true) || token_is("#true", true))
         return MINIM_TRUE;
-    if (token_is("#f") || token_is("#false"))
+    if (token_is("#f", true) || token_is("#false", true))
         return MINIM_FALSE;
-    if (token_is("#u8") && next(in) == '(')
+    if (token_is("#u8", true) && next(in) == '(')
         return read_bytevector(in);
     minim_obj x;
     if (read_number(&x))
         return x;
     read_error("bad # syntax", token_string());
+}
+
+// Reads a directive after its `#!`, `fold-case` or `no-fold-case`, which sets
+// or clears folding for the rest of `in`.
+static void read_directive(source *in) {
+    token.len = 0;
+    token_push('#');
+    token_push('!');
+    read_until_delimiter(in);
+    bool fold = token_is("#!fold-case", false);
+    if (!fold && !token_is("#!no-fold-case", false))
+        read_error("bad # syntax", token_string());
+    if (in->port != NULL)
+        minim_port_set_fold_case(*in->port, fold);
+    else
+        in->fold = fold;
 }
 
 // Reads the datum after an abbreviation like `'`, starting with `c`, and
@@ -398,15 +447,22 @@ static int read_item_from(source *in, int32_t c, minim_obj *x) {
         *x = read_list(in);
         return ITEM;
     case '"':
-        *x = read_string(in);
+        read_quoted(in, '"', "eof in string");
+        *x = token_string();
+        return ITEM;
+    case '|':
+        read_quoted(in, '|', "eof in symbol");
+        *x = minim_intern(token_string());
         return ITEM;
     case '#':
         c = next(in);
-        if (c == '|' || c == ';') {  // a block or datum comment, then the next item
+        if (c == '|' || c == ';' || c == '!') {  // a comment or directive, then the next item
             if (c == '|')
                 skip_block_comment(in);
-            else
+            else if (c == ';')
                 read_required(in, "bad datum comment");
+            else
+                read_directive(in);
             return read_item(in, x);
         }
         *x = read_hash(in, c);
@@ -436,10 +492,13 @@ static int read_item_from(source *in, int32_t c, minim_obj *x) {
         token.len = 0;
         token_push((uint32_t)c);
         read_until_delimiter(in);
-        if (token_is("."))
+        if (token_is(".", false))
             return DOT;
-        if (!read_number(x))
+        if (!read_number(x)) {
+            if (folding(in))
+                fold_token();
             *x = minim_intern(token_string());
+        }
         return ITEM;
     }
 }

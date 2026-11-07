@@ -10,7 +10,9 @@
 #include "char.h"
 #include "heap.h"
 #include "minim.h"
+#include "number.h"
 #include "port.h"
+#include "read.h"
 #include "symbol.h"
 
 // Where the printer writes: a file, or a buffer of chars, malloc'd, so that
@@ -75,14 +77,20 @@ static void write_chars(sink *out, minim_obj s) {
         put(out, chars[i]);
 }
 
-static void write_string(sink *out, minim_obj s) {
+// Writes the chars of the string `s` between `quote`s, a string's or a
+// symbol's, escaping `quote`, `\`, and control characters.
+static void write_quoted(sink *out, minim_obj s, uint32_t quote) {
     const uint32_t *chars = minim_string_chars(s);
     size_t n = minim_string_length(s);
-    put(out, '"');
+    put(out, quote);
     for (size_t i = 0; i < n; i++) {
         uint32_t c = chars[i];
+        if (c == quote) {
+            put(out, '\\');
+            put(out, c);
+            continue;
+        }
         switch (c) {
-        case '"': put_ascii(out, "\\\""); break;
         case '\\': put_ascii(out, "\\\\"); break;
         case '\a': put_ascii(out, "\\a"); break;
         case '\b': put_ascii(out, "\\b"); break;
@@ -99,7 +107,34 @@ static void write_string(sink *out, minim_obj s) {
                 put(out, c);
         }
     }
-    put(out, '"');
+    put(out, quote);
+}
+
+// Whether the symbol named `s` must be written in bars to read back as itself.
+static bool needs_bars(minim_obj s) {
+    const uint32_t *chars = minim_string_chars(s);
+    size_t n = minim_string_length(s);
+    if (n == 0 || (n == 1 && chars[0] == '.'))
+        return true;
+    if (minim_parse_number(chars, n, 10, NULL) == MINIM_PARSE_OK)
+        return true;
+    if (n == 2 && (chars[0] == '+' || chars[0] == '-') && chars[1] == 'i')
+        return true;  // excluded from identifiers (R7RS 7.1.1)
+    if (chars[0] == '#' || chars[0] == '\'' || chars[0] == '`' || chars[0] == ',')
+        return true;
+    for (size_t i = 0; i < n; i++) {
+        if (minim_is_delimiter((int32_t)chars[i]) || chars[i] == '\\' || is_control(chars[i]))
+            return true;
+    }
+    return false;
+}
+
+static void write_symbol(sink *out, minim_obj sym) {
+    minim_obj name = minim_symbol_name(sym);
+    if (needs_bars(name))
+        write_quoted(out, name, '|');
+    else
+        write_chars(out, name);
 }
 
 // The abbreviation for the pair `x` if it is `(quote d)`, `(quasiquote d)`,
@@ -268,8 +303,10 @@ static void print(sink *out, minim_obj x, bool display) {
         write_char(out, minim_char_value(x));
     else if (minim_is_pair(x))
         write_pair(out, x, display);
-    else if (minim_is_symbol(x))
+    else if (minim_is_symbol(x) && display)
         write_chars(out, minim_symbol_name(x));
+    else if (minim_is_symbol(x))
+        write_symbol(out, x);
     else if (minim_is_vector(x))
         write_vector(out, x, display);
     else if (minim_is_bytevector(x))
@@ -277,7 +314,7 @@ static void print(sink *out, minim_obj x, bool display) {
     else if (minim_is_string(x) && display)
         write_chars(out, x);
     else if (minim_is_string(x))
-        write_string(out, x);
+        write_quoted(out, x, '"');
     else if (minim_is_closure(x))
         write_procedure(out, minim_closure_name(x));
     else if (minim_is_continuation(x))

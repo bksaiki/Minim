@@ -58,6 +58,13 @@ static void test_atoms(void) {
     CHECK(reads_as("#true", "#t"));
     CHECK(reads_as("#f", "#f"));
     CHECK(reads_as("#false", "#f"));
+
+    // Case is insignificant in `#` syntax and special numbers.
+    CHECK(reads_as("#T", "#t"));
+    CHECK(reads_as("#FALSE", "#f"));
+    CHECK(reads_as("#U8(1)", "#u8(1)"));
+    CHECK(reads_as("+NAN.0", "+nan.0"));
+    CHECK(reads_as("-Inf.0", "-inf.0"));
 }
 
 // Whether `s` reads as a symbol, as a number's look-alike does.
@@ -112,6 +119,19 @@ static void test_numbers(void) {
         CHECK(reads_symbol(symbols[i]));
 }
 
+// Whether the first datum in `s`, read from a port and from a C string, is the
+// symbol named `name`.
+static bool reads_symbol_named(const char *s, const char *name) {
+    minim_obj sym = minim_intern_cstr(name);
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&sym, &x);
+    x = minim_read(input(s));
+    bool ok = x == sym;
+    const char *p = s;
+    x = minim_read_string(&p);
+    MINIM_RETURN(ok && x == sym);
+}
+
 static void test_symbols(void) {
     CHECK(reads_as("foo", "foo"));
     CHECK(reads_as("Foo", "Foo"));
@@ -120,6 +140,38 @@ static void test_symbols(void) {
     CHECK(reads_as("-", "-"));
     CHECK(reads_as("...", "..."));
     CHECK(reads_as("-x", "-x"));
+
+    // `|...|` names a symbol exactly, with the string escapes.
+    CHECK(reads_symbol_named("|foo|", "foo"));
+    CHECK(reads_symbol_named("|a b|", "a b"));
+    CHECK(reads_symbol_named("||", ""));
+    CHECK(reads_symbol_named("|H\\x65;llo|", "Hello"));
+    CHECK(reads_symbol_named("|a\\|b|", "a|b"));
+    CHECK(reads_symbol_named("|a\\\\b|", "a\\b"));
+    CHECK(reads_symbol_named("|1|", "1"));
+    CHECK(reads_symbol_named("|.|", "."));
+    CHECK(reads_as("(|a|)", "(a)"));
+}
+
+// `|` is a delimiter, so `a|b|c` is three symbols.
+static void test_bar_delimits(void) {
+    minim_obj port = input("a|b|c");
+    minim_obj a = MINIM_NIL;
+    minim_obj b = MINIM_NIL;
+    minim_obj c = MINIM_NIL;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&port, &a, &b, &c, &x);
+    a = minim_intern_cstr("a");
+    b = minim_intern_cstr("b");
+    c = minim_intern_cstr("c");
+    x = minim_read(port);
+    CHECK_EQ(x, a);
+    x = minim_read(port);
+    CHECK_EQ(x, b);
+    x = minim_read(port);
+    CHECK_EQ(x, c);
+    CHECK_EQ(minim_read(port), MINIM_EOF);
+    MINIM_RETURN_VOID;
 }
 
 static void test_strings(void) {
@@ -222,12 +274,35 @@ static void test_comments(void) {
     CHECK(reads_as("(1 #||#)", "(1)"));
     CHECK(reads_as("#| a #| nested |# b |# 6", "6"));
     CHECK(reads_as("#|\nline\n|# 7", "7"));
-    CHECK(reads_as("#| |# |# 8", "|#"));
+    CHECK(read_fails_with("#| |# |# 8", "eof in symbol"));
     CHECK(reads_as("\"#|\"", "\"#|\""));
     CHECK(read_fails_with("#| open", "eof in comment"));
     CHECK(read_fails_with("#| #| |#", "eof in comment"));
     CHECK(read_fails_with("(1 #;)", "bad datum comment"));
     CHECK(read_fails_with("#;", "bad datum comment"));
+}
+
+// `#!fold-case` folds the identifiers and char names after it, until
+// `#!no-fold-case`: for the rest of a port, or of one C string read.
+static void test_fold_case(void) {
+    CHECK(reads_symbol_named("#!fold-case ABC", "abc"));
+    CHECK(reads_symbol_named("#!fold-case #!no-fold-case ABC", "ABC"));
+    CHECK(reads_symbol_named("#!fold-case STRA\u00dfE", "strasse"));
+    CHECK(reads_symbol_named("#!fold-case |ABC|", "ABC"));
+    CHECK(reads_as("#!fold-case #\\SPACE", "#\\space"));
+    CHECK(reads_as("#!fold-case #\\A", "#\\A"));
+    CHECK(reads_as("#!fold-case \"ABC\"", "\"ABC\""));
+    CHECK(reads_as("(A #!fold-case B)", "(A b)"));
+
+    minim_obj port = input("#!fold-case ABC DEF");
+    MINIM_FRAME(&port);
+    CHECK(prints_as(minim_read(port), "abc"));
+    CHECK(prints_as(minim_read(port), "def"));
+
+    const char *p = "#!fold-case ABC DEF";
+    CHECK(prints_as(minim_read_string(&p), "abc"));
+    CHECK(prints_as(minim_read_string(&p), "DEF"));
+    MINIM_RETURN_VOID;
 }
 
 static void test_errors(void) {
@@ -247,6 +322,9 @@ static void test_errors(void) {
     CHECK(read_fails_with("#u8 (1)", "bad # syntax"));
     CHECK(read_fails_with("#u9(1)", "bad # syntax"));
     CHECK(read_fails_with("\"abc", "eof in string"));
+    CHECK(read_fails_with("|abc", "eof in symbol"));
+    CHECK(read_fails_with("#!fold-casex", "bad # syntax"));
+    CHECK(read_fails_with("#!foo", "bad # syntax"));
     CHECK(read_fails_with("\"\\q\"", "bad string escape"));
     CHECK(read_fails_with("\"\\xZZ;\"", "bad string escape"));
     CHECK(read_fails_with("#q", "bad # syntax"));
@@ -273,12 +351,14 @@ int main(void) {
     test_atoms();
     test_numbers();
     test_symbols();
+    test_bar_delimits();
     test_strings();
     test_continuations();
     test_chars();
     test_lists();
     test_stream();
     test_comments();
+    test_fold_case();
     test_errors();
     minim_shutdown();
     return test_result();
