@@ -81,6 +81,21 @@ five
 (get-secret)
 secret
 
+; An ellipsis among the literals is matched and inserted as itself.
+(define-syntax elli-lit-1
+  (syntax-rules ... (...)
+    ((_ x) '(x ...))))
+(elli-lit-1 100)
+(define-syntax dots
+  (syntax-rules (...)
+    ((_ ...) 'dots)
+    ((_ x) 'other)))
+(list (dots ...) (dots 1))
+(define-syntax custom-dots
+  (syntax-rules ::: (...)
+    ((_ x :::) '(x ::: ...))))
+(custom-dots 1 2)
+
 ; Errors.
 (my-or 1)
 (define-syntax bad (lambda (x) x))

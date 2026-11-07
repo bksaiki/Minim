@@ -96,6 +96,9 @@ report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'syntax-rules|boot|r7rs'
 ```
 
+**Done.**  `ellipsis?` checks `literal?` first; one line.  The 4.3 report
+passes all 26.
+
 ### After the last phase
 
 Sync the docs: `macros.md` (top-level `begin`; the ellipsis rule),

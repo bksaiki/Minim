@@ -329,7 +329,7 @@
   (define rules (cdr rest))
   (define renames '())  ; one alias per identifier per use
 
-  (define (ellipsis? x) (and (symbol? x) (eq? (%resolve x env) ellipsis)))
+  (define (ellipsis? x) (and (symbol? x) (not (literal? x)) (eq? (%resolve x env) ellipsis)))
   (define (literal? x) (memq x literals))
   (define (underscore? x) (eq? (%resolve x env) '_))
   (define (followed-by-ellipsis? x) (and (pair? (cdr x)) (ellipsis? (cadr x))))
