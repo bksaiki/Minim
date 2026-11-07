@@ -120,6 +120,8 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
                 len++;
         if (len == 0 || sign + len != n)
             return MINIM_PARSE_NOT_NUMBER;
+        if (x == NULL)
+            return MINIM_PARSE_OK;
 
         if (integer && exactness != 'i') {
             uint64_t limit = (uint64_t)MINIM_FIXNUM_MAX + (negative ? 1 : 0);
@@ -144,6 +146,8 @@ minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, mini
         }
     }
 
+    if (x == NULL)
+        return MINIM_PARSE_OK;
     if (exactness == 'e')
         return exact_of(d, x);
     *x = minim_make_flonum(d);

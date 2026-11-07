@@ -113,6 +113,15 @@ each written symbol reads back `eq?`.  `tests/repl/symbols.scm`: `write` of
 cmake --build --preset dev && ctest --preset dev -R 'print|read|symbols|r7rs'
 ```
 
+**Done.**  The printer never allocates during a walk, so
+`minim_parse_number` takes a NULL `x` to check only the syntax; a name
+that parses, out of range included, is barred.  The reader's delimiter
+test is shared as `minim_is_delimiter` (`read.h`).  `write_string` became
+`write_quoted(out, s, quote)`, for strings and barred symbols alike, so
+symbols get the strings' mnemonic escapes (`\n`) as well as `\xHH;`.  The
+Read syntax report: 87 passed, 6 failed, 0 errors; `|+NaN.0|` waits on
+Phase 3, `|+NaN.0abc|` stays failing (Settled in review).
+
 ### Phase 3 - Case
 
 - `include/minim.h`: `MINIM_PORT_FOLD_CASE`.

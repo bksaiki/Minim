@@ -15,6 +15,9 @@
  */
 minim_obj minim_read_string(const char **s);
 
+/** Whether the code point `c`, or the end of input, -1, ends a token. */
+bool minim_is_delimiter(int32_t c);
+
 /**
  * The forms of the file named by the string `path`, as a list.  Raises
  * `load: cannot open file` or a read error; the file is always closed.

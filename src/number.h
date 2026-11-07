@@ -19,7 +19,8 @@ typedef enum minim_parse {
 /**
  * Parses the `n` chars `s` as a number in `radix` (2, 8, 10, or 16), unless a
  * prefix gives another, into `*x`.  `s` may be in the heap: it is read before
- * anything is allocated.
+ * anything is allocated.  With `x` NULL, only checks the syntax, allocating
+ * nothing: the result is MINIM_PARSE_OK or MINIM_PARSE_NOT_NUMBER.
  */
 minim_parse minim_parse_number(const uint32_t *s, size_t n, unsigned radix, minim_obj *x);
 

@@ -59,7 +59,7 @@ static bool is_whitespace(int32_t c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
 }
 
-static bool is_delimiter(int32_t c) {
+bool minim_is_delimiter(int32_t c) {
     return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';'
            || c == '|';
 }
@@ -97,7 +97,7 @@ static void unread(source *in, int32_t c) {
 static void read_until_delimiter(source *in) {
     for (;;) {
         int32_t c = next(in);
-        if (is_delimiter(c)) {
+        if (minim_is_delimiter(c)) {
             unread(in, c);
             return;
         }

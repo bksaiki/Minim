@@ -17,6 +17,9 @@ g
 (symbol->string 'abc)
 (string->symbol "abc")
 (eq? (string->symbol "abc") 'abc)
+(string->symbol "a b")
+(begin (write (string->symbol "1")) (newline))
+(begin (display (string->symbol "a b")) (newline))
 (symbol->string "abc")
 
 ; Property lists, keys compared by eq?.
