@@ -58,6 +58,13 @@ static void test_atoms(void) {
     CHECK(reads_as("#true", "#t"));
     CHECK(reads_as("#f", "#f"));
     CHECK(reads_as("#false", "#f"));
+
+    // Case is insignificant in `#` syntax and special numbers.
+    CHECK(reads_as("#T", "#t"));
+    CHECK(reads_as("#FALSE", "#f"));
+    CHECK(reads_as("#U8(1)", "#u8(1)"));
+    CHECK(reads_as("+NAN.0", "+nan.0"));
+    CHECK(reads_as("-Inf.0", "-inf.0"));
 }
 
 // Whether `s` reads as a symbol, as a number's look-alike does.
@@ -275,6 +282,29 @@ static void test_comments(void) {
     CHECK(read_fails_with("#;", "bad datum comment"));
 }
 
+// `#!fold-case` folds the identifiers and char names after it, until
+// `#!no-fold-case`: for the rest of a port, or of one C string read.
+static void test_fold_case(void) {
+    CHECK(reads_symbol_named("#!fold-case ABC", "abc"));
+    CHECK(reads_symbol_named("#!fold-case #!no-fold-case ABC", "ABC"));
+    CHECK(reads_symbol_named("#!fold-case STRA\u00dfE", "strasse"));
+    CHECK(reads_symbol_named("#!fold-case |ABC|", "ABC"));
+    CHECK(reads_as("#!fold-case #\\SPACE", "#\\space"));
+    CHECK(reads_as("#!fold-case #\\A", "#\\A"));
+    CHECK(reads_as("#!fold-case \"ABC\"", "\"ABC\""));
+    CHECK(reads_as("(A #!fold-case B)", "(A b)"));
+
+    minim_obj port = input("#!fold-case ABC DEF");
+    MINIM_FRAME(&port);
+    CHECK(prints_as(minim_read(port), "abc"));
+    CHECK(prints_as(minim_read(port), "def"));
+
+    const char *p = "#!fold-case ABC DEF";
+    CHECK(prints_as(minim_read_string(&p), "abc"));
+    CHECK(prints_as(minim_read_string(&p), "DEF"));
+    MINIM_RETURN_VOID;
+}
+
 static void test_errors(void) {
     CHECK(read_fails_with(")", "unexpected )"));
     CHECK(read_fails_with(".", "unexpected ."));
@@ -293,6 +323,8 @@ static void test_errors(void) {
     CHECK(read_fails_with("#u9(1)", "bad # syntax"));
     CHECK(read_fails_with("\"abc", "eof in string"));
     CHECK(read_fails_with("|abc", "eof in symbol"));
+    CHECK(read_fails_with("#!fold-casex", "bad # syntax"));
+    CHECK(read_fails_with("#!foo", "bad # syntax"));
     CHECK(read_fails_with("\"\\q\"", "bad string escape"));
     CHECK(read_fails_with("\"\\xZZ;\"", "bad string escape"));
     CHECK(read_fails_with("#q", "bad # syntax"));
@@ -326,6 +358,7 @@ int main(void) {
     test_lists();
     test_stream();
     test_comments();
+    test_fold_case();
     test_errors();
     minim_shutdown();
     return test_result();

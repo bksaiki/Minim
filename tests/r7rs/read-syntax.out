@@ -1,7 +1,4 @@
 FAIL 2194 (cadr (read (open-input-string "#0=(1 . #0#)"))) raised ("bad # syntax" "#0=")
 FAIL 2195 (cadr (read (open-input-string "(#0=(1 2 3) #0#)"))) raised ("bad # syntax" "#0=")
-FAIL 2213 (read (open-input-string "#!fold-case ABC")) raised ("bad # syntax" "#!fold-case")
-FAIL 2214 (read (open-input-string "#!fold-case #!no-fold-case ABC")) raised ("bad # syntax" "#!fold-case")
-FAIL 2296 (get-output-string out) => "+NaN.0"
 FAIL 2297 (get-output-string out) => "+NaN.0abc"
-Read syntax: 87 passed, 6 failed, 0 errors
+Read syntax: 90 passed, 3 failed, 0 errors

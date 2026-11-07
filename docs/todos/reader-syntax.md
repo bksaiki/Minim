@@ -140,6 +140,18 @@ lasting across reads from one port; `#T`, `#FALSE`, `#U8(1)`, `+NAN.0`,
 cmake --build --preset dev && ctest --preset dev -R 'read|ports|r7rs'
 ```
 
+**Done.**  Directives are read in `read_item_from` beside the comments;
+anything else after `#!`, `#!fold-casex` included, is `bad # syntax`.  A
+port's flag is set by `minim_port_set_fold_case` (`port.h`); a C string's
+is `source.fold`.  `fold_token` refolds the token with
+`minim_unicode_full_foldcase`, for an identifier that isn't a number and a
+char name longer than one char.  `token_is` takes whether to ignore ASCII
+case, for the `#` syntax; `chars_are` (`number.c`) ignores it always, as it
+only matches `inf.0` and `nan.0`.  The reports: Read syntax 90 passed, 3
+failed (the two `#n=` datum labels and `|+NaN.0abc|`); Numeric syntax 124
+passed, 17 failed, 37 errors (the exponent markers `d`, `l`, ...,
+rationals, and complex numbers, out of scope).
+
 ### After the last phase
 
 Sync the docs: `repl.md` (the reader table: `|...|` symbols, directives,
@@ -153,19 +165,7 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### Bar non-ASCII symbols?
-
-R7RS 6.13.3 says `write` escapes "symbols that contain non-ASCII
-characters" with vertical lines, though such names read back unbarred.
-Barring them makes `(write 'λ)` print `|λ|`.  Provisional: don't, since
-they read back; reopen if a conformance test needs it.
-
-### Fold `|...|` symbols under `#!fold-case`?
-
-R7RS says fold-case folds "identifiers", which a `|...|` symbol is, but the
-bars are a way to write a name exactly.  Provisional: not folded, as
-strings aren't; reopen if another implementation's behavior or a test says
-otherwise.
+None; see Settled in review.
 
 ## Settled in review
 
@@ -174,3 +174,9 @@ otherwise.
   Chibi's tests bar only to be safe, is written bare and its test left
   failing.  Reopen if the bar test grows a general "starts like a number"
   rule.
+- Non-ASCII names are written bare: `(write 'λ)` prints `λ`, which reads
+  back, as Chez and Racket write it, though R7RS 6.13.3 says such symbols
+  are barred.  No conformance test checks it.
+- `|...|` symbols aren't folded under `#!fold-case`, as strings aren't, so
+  bars still write a name exactly, as in Racket's and Chez's
+  case-insensitive modes.

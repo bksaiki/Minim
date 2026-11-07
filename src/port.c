@@ -132,6 +132,11 @@ void minim_port_close(minim_obj p) {
     f[5] = (minim_obj)NULL;
 }
 
+void minim_port_set_fold_case(minim_obj p, bool fold) {
+    unsigned flags = minim_port_flags(p) & ~(unsigned)MINIM_PORT_FOLD_CASE;
+    fields(p)[0] = minim_make_header(flags | (fold ? MINIM_PORT_FOLD_CASE : 0), MINIM_TYPE_PORT);
+}
+
 // Takes the lookahead of the port `p` into `*c`: a char or byte, or -1 for the
 // end; returns whether there was one.
 static bool take_lookahead(minim_obj p, int32_t *c) {

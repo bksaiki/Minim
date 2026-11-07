@@ -6,9 +6,6 @@ FAIL 2360 (values z) => 1d2
 FAIL 2361 (values z) => 1D2
 FAIL 2362 (values z) => 1l2
 FAIL 2363 (values z) => 1L2
-FAIL 2366 (values z) => +NAN.0
-FAIL 2368 (values z) => +InF.0
-FAIL 2370 (values z) => -iNF.0
 FAIL 2375 (values z) => 1/2
 ERROR 2376 ("bad # syntax" "#e1/2")
 FAIL 2377 (values z) => 10/2
@@ -55,4 +52,4 @@ FAIL 2478 (pair? ls) => #f
 FAIL 2479 (pair? ls) => #f
 FAIL 2481 (pair? ls) => #f
 FAIL 2487 (pair? ls) => #f
-Numeric syntax: 121 passed, 20 failed, 37 errors
+Numeric syntax: 124 passed, 17 failed, 37 errors
