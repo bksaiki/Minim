@@ -87,8 +87,11 @@ special form even where the user has bound `if`.
 `lambda` is an alias for the special form, so a local `lambda` can't capture
 it.
 
-**Top level.**  A `begin` is spliced: each of its forms is expanded as a
-top-level form, in order.
+**Top level.**  A `begin` is spliced and scanned as a library body is
+(`%expand-top-forms`): every definition and macro is bound before any
+right-hand side or expression is expanded, so a macro's definitions may
+refer to ones after them.  `import` and `define-library` run as the scan
+meets them.  The forms then run in order.
 
 - `(define x e)` defines a label for `x`: the environment's own, if `x`
   already has one (for an alias, only one already defined); otherwise `x`
@@ -124,7 +127,8 @@ matching is `bad syntax`.
 
 - The ellipsis, `_`, and literals are recognized by binding, not name: a
   literal matches an input identifier that resolves, in the use's
-  environment, as the literal does in the definition's.
+  environment, as the literal does in the definition's.  An ellipsis among
+  the literals is a literal, in patterns and templates alike.
 - An ellipsis may be nested and followed by more patterns.  Dotted and vector
   patterns match accordingly; other data match by `equal?`.
 - A pattern variable is bound to its depth and match; at depth n > 0 the
@@ -182,10 +186,11 @@ runs, with the smallest enclosing form as the irritant.  Both they and
 `(define-library name decl ...)` (R7RS 5.6) makes a library environment.
 Its declarations: `export`, of a name or `(rename name external)`; `import`;
 `begin`; and `include`, of files read relative to the library file's
-directory.  Its body is scanned like a body: every definition is bound, to a
-fresh label, before any form is expanded, so one may refer to one further
-down.  The form registers the exports, `(name . binding)`, in `%libraries`,
-and expands to its body, which runs in order when the form does.
+directory.  Its body is scanned as a top-level `begin`, every definition
+bound to a fresh label, except that `import` and `define-library` in it are
+expressions, not declarations.  The form registers the exports, `(name .
+binding)`, in `%libraries`, and expands to its body, which runs in order
+when the form does.
 
 `(import set ...)`, at top level or in a library, binds each name the import
 sets name to the exporting library's binding: the same label, so the same
