@@ -51,3 +51,14 @@ map
 (define (later) (defined-after))
 (define (defined-after) 'after)
 (later)
+
+; A top-level `begin` binds its definitions before expanding any, as a body
+; does, so a macro's definitions may refer to ones after them.
+(define-syntax ffoo
+  (syntax-rules ()
+    ((_ ff) (begin (define (ff x) (gg x)) (define (gg x) (* x x))))))
+(ffoo ff)
+(ff 10)
+(begin (define (first) (second)) (define (second) 'second) (first))
+(begin (define-syntax twice (syntax-rules () ((_ e) (list e e)))) (twice 'x))
+(begin (import (prefix (scheme base) b:)) (b:when #t 'imported))

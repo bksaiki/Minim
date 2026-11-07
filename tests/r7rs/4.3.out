@@ -1,3 +1,1 @@
-FAIL 557 (ff 10) raised ("unbound variable" gg)
-ERROR 595 ("bad syntax" x)
-4.3 Macros: 24 passed, 1 failed, 1 errors
+4.3 Macros: 26 passed, 0 failed, 0 errors

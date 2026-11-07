@@ -136,37 +136,9 @@
                     (for-each (lambda (b) (%top-bind! top (car b) (cdr b))) (%import-set s)))))
             sets))
 
-;; Expands the body of a library, the forms `forms`, in its environment `top`:
-;; every definition is bound before any form is expanded, so one may refer to
-;; one further down.  The definitions and expressions run in order.
+;; The core form of a library body, the forms `forms`, in its environment `top`.
 (define (%expand-library-body forms top)
-  ;; `items` collects, in reverse, a procedure expanding each form.
-  (define (scan forms items)
-    (if (null? forms)
-        (reverse items)
-        (let* ((x (%expand-head (car forms) top))
-               (k (%keyword x top))
-               (rest (cdr forms)))
-          (case k
-            ((begin) (if (%length x 0) (scan (append (cdr x) rest) items) (%bad-syntax x)))
-            ((define)
-             (let ((d (%define-procedure x)))
-               (if (%binding-form? d)
-                   (let ((name (%top-define! top (cadr d))))
-                     (scan rest (cons (lambda ()
-                                        (list 'define name (%expand-expr (caddr d) top)))
-                                      items)))
-                   (%bad-syntax x))))
-            ((define-values)
-             (if (eq? (%length x 0) 3)
-                 (let ((formals (%map-formals (lambda (id) (%top-define! top id)) (cadr x) x)))
-                   (scan rest (cons (lambda () (list 'define-values formals
-                                                     (%expand-expr (caddr x) top)))
-                                    items)))
-                 (%bad-syntax x)))
-            ((define-syntax) (%expand-define-syntax x top) (scan rest items))
-            (else (scan rest (cons (lambda () (%expand-expr x top)) items)))))))
-  (cons 'begin (map (lambda (item) (item)) (scan forms '()))))
+  (cons 'begin (%expand-top-forms forms top #f)))
 
 ;; The (external name . binding) an export spec of the library environment `top`
 ;; denotes: `name`, or `(rename name external)`.

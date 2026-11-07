@@ -230,7 +230,7 @@ changes as milestones land, until every test passes.  Where Minim stands:
 |---|---|---|---|
 | 4.1 Primitive expression types | 27 | 0 | 0 |
 | 4.2 Derived expression types | 61 | 4 | 6 |
-| 4.3 Macros | 24 | 1 | 1 |
+| 4.3 Macros | 26 | 0 | 0 |
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
 | 6.2 Numbers | 110 | 92 | 17 |
