@@ -17,12 +17,13 @@ and advances it.
 | `#(a b)` | vector |
 | `#u8(0 255)` | bytevector, of fixnums 0 to 255 |
 | `42`, `-7`, `+5`, `#xff`, `#e1e3` | fixnum; out-of-range literals are errors |
-| `1.5`, `.5`, `1e10`, `#i3`, `+inf.0`, `-inf.0`, `+nan.0` | flonum |
+| `1.5`, `.5`, `1e10`, `#i3`, `+inf.0`, `-inf.0`, `+nan.0` (in any case) | flonum |
 | `"..."` | string, with `\"`, `\\`, `\|`, `\a`, `\b`, `\n`, `\r`, `\t`, and `\xHH;` escapes, and line continuations (`\`, then a line ending, between intraline white space) |
 | `#\a`, `#\space`, `#\xHH`; R7RS's names (`#\null`, `#\alarm`, ...) and Chez's `#\nul` | char |
-| `#t`, `#f`, `#true`, `#false` | boolean |
+| `#t`, `#f`, `#true`, `#false`, in any case | boolean |
 | `'x`, `` `x ``, `,x`, `,@x` | `(quote x)`, `(quasiquote x)`, `(unquote x)`, `(unquote-splicing x)`; whitespace may follow, but `,@` is one token |
-| anything else up to a delimiter | symbol (case-sensitive), including `+`, `-`, `...`, and `1/2` |
+| `\|a b\|` | symbol, named exactly, with the string escapes; never a number |
+| anything else up to a delimiter | symbol, including `+`, `-`, `...`, and `1/2`; case-sensitive unless folding |
 
 A number may start with a radix prefix, `#x` `#o` `#b` `#d`, and an
 exactness prefix, `#e` `#i`, in either order; decimals are radix 10 only, and
@@ -30,13 +31,19 @@ exactness prefix, `#e` `#i`, in either order; decimals are radix 10 only, and
 `minim_parse_number` (`src/number.h`) parses numbers for the reader and
 `string->number`; decimals go through `strtod`, which rounds correctly.
 
-Delimiters are whitespace, `(`, `)`, `"`, and `;`.  `;` starts a comment that
-runs to the end of the line, `#|` one to the matching `|#`, nesting, and
-`#;` comments out the next datum.  Comments may stand wherever whitespace
-may, before a `)` too.
+Delimiters are whitespace, `(`, `)`, `"`, `;`, and `|`
+(`minim_is_delimiter`).  `;` starts a comment that runs to the end of the
+line, `#|` one to the matching `|#`, nesting, and `#;` comments out the next
+datum.  Comments may stand wherever whitespace may, before a `)` too, and so
+may the directives `#!fold-case` and `#!no-fold-case`.  They turn folding on
+and off for the rest of a port (`MINIM_PORT_FOLD_CASE`, `ports.md`), or of
+one `minim_read_string`.  While folding, identifiers and character names
+(`#\SPACE`) get Unicode's full case folding, as `string-foldcase`;
+`|...|` symbols, strings, and character literals (`#\A`) don't.
 
-The reader keeps no state between calls: it only ever pushes back one
-character, into a port's lookahead, or, in a C string, an ASCII delimiter.
+Besides the fold flag, the reader keeps no state between calls: it only ever
+pushes back one character, into a port's lookahead, or, in a C string, an
+ASCII delimiter.
 
 ## Printer
 
@@ -52,7 +59,7 @@ walks `x`, so `minim_write` is safe on error paths.
 | void / eof / unbound | `#<void>` / `#<eof>` / `#<unbound>` |
 | char | `#\a`; R7RS's named chars by name (`#\null`, `#\delete`, ...); other control chars as `#\x1` |
 | string | `"..."` with `\"`, `\\`, `\a`, `\b`, `\n`, `\r`, `\t`; other control chars as `\x1;` |
-| symbol | its name |
+| symbol | its name, or, if that wouldn't read back as it, in bars with the strings' escapes and `\|`: the empty name, `.`, a name that parses as a number, `+i`, `-i`, one with a delimiter, `\`, or a control character, or starting with `#`, `'`, `` ` ``, or `,`.  Non-ASCII names are bare |
 | pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently |
 | vector | `#(a b)` |
 | bytevector | `#u8(0 255)` |
@@ -61,8 +68,9 @@ walks `x`, so `minim_write` is safe on error paths.
 Output is UTF-8.  Everything except the `#<...>` forms reads back as equal
 data.  Cyclic data loops forever.
 
-`minim_display` is the same, except that strings and chars, including nested
-ones, print as their characters: `(1 "a" #\b)` displays as `(1 a b)`.
+`minim_display` is the same, except that strings, chars, and symbols,
+including nested ones, print as their characters: `(1 "a" #\b |c d|)`
+displays as `(1 a b c d)`.
 
 ## REPL
 

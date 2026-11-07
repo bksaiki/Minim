@@ -13,7 +13,8 @@ port  [ header | buffer | name | index | lookahead | file ]  48 B
 ```
 
 - The header's length bits hold the flags, as Chez's type word does: input
-  or output, file or in memory, binary or textual, and closed.
+  or output, file or in memory, binary or textual, closed, and whether the
+  reader folds case (`#!fold-case`).
 - `buffer`: a string port's string, or a bytevector port's bytevector.  An
   input port reads it from `index`; an output one appends at `index`, the
   length so far, doubling the buffer when it is full.

@@ -75,7 +75,7 @@ the files' forms, read by `%include`, so relative to the library file's
 directory inside one, else the current directory.  `include-ci` reads with
 fold-case set from the start: `%read-file` takes an optional second
 argument, whether to fold, which sets `MINIM_PORT_FOLD_CASE`
-(`reader-syntax.md`, Phase 3).  As library declarations, `include-ci` joins
+(`minim_port_set_fold_case`, `ports.md`).  As library declarations, `include-ci` joins
 `include`, and `include-library-declarations` splices the files' forms as
 declarations.
 
@@ -125,7 +125,7 @@ cmake --build --preset dev --target boot && cmake --build --preset dev && ctest 
 - `scheme/standard.scm`: `include`, `include-ci` in `(scheme base)`.
   `scheme/prelude.boot` regenerated.
 
-Needs `reader-syntax.md`'s Phase 3 (`MINIM_PORT_FOLD_CASE`).
+Builds on the reader's `MINIM_PORT_FOLD_CASE`, already in place.
 
 Tests: files under `tests/repl/lib/`.  `tests/repl/cond-expand.scm`:
 `include` at top level and in a body, with definitions; `include-ci` of a
