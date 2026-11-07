@@ -306,29 +306,52 @@ An investigation, not a fixed change: Phases 2 to 5 accept the moved
 procedures' cost (Settled in review), and this phase looks for what is cheap
 to win back without returning to C.  `(vector-copy v)` of n elements makes
 about 10 closure calls of fixed overhead, then a closure call and 6
-primitive calls per element in `%copy!`'s `do` loop.  Candidates:
+primitive calls per element in `%copy!`'s `do` loop.
+
+**The principle:** change the prelude only where the result is idiomatic
+Scheme or removes redundant work, never to dodge this interpreter's call
+cost, which is `compile.md`'s to lower.  Chez (`s/5_6.ss`) and Chibi
+(`lib/init-7.scm`) both fill in an omitted argument's default and go
+straight to the full code, not re-entering the procedure; Chez does so
+though its compiler would make re-entering cheap.  Candidates:
 
 - Short `case-lambda` clauses calling the checked helper (`%copy`,
-  `%fill!`, ...) directly, not re-entering the procedure to fill in a
-  default.
+  `%fill!`, ...) directly with their defaults, as Chez and Chibi do.
+- `%extreme`, behind `max` and `min`: it calls `nan?`, which checks again
+  that its argument is a number, twice per argument; `(= y y)` inline
+  drops the redundant check.
 - `%copy!` looping over one index with a running offset, saving two
-  primitive calls per element.
-- Fewer helper layers on the common path (`%check-range` through two
-  `%check-position`s).
-- `%extreme`, behind `max` and `min`: it calls `nan?`, a closure that calls
-  `%check`, twice per argument; `(= y y)` inline would do.
+  primitive calls per element, if no less clear.
+
+Not a candidate: flattening `%check-range`'s two `%check-position`s, which
+a compiler inlines; it would help only this interpreter.
 
 Measure each against the phase's start with the microbenchmarks recorded in
-Phases 2 and 3; keep what wins past noise, and record the rest here.  The
+Phases 2 to 5; keep what wins past noise, and record the rest here.  The
 per-element closure call stays, so most of the gap to C remains; closing it
 is `compile.md`'s lexical addressing, or C, where a program needs it.
 
-Tests: the existing `strings`, `vectors`, and `bytevectors` REPL tests,
-unchanged.
+Tests: the existing `strings`, `vectors`, `bytevectors`, `numbers`, and
+`ports` REPL tests, unchanged.
 
 ```sh
-cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'strings|vectors|bytevectors|boot|r7rs'
+cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'strings|vectors|bytevectors|numbers|ports|boot|r7rs'
 ```
+
+**Done.**  Measured against the phase's start, release, median of 5
+alternating runs:
+
+| Candidate | Loop | Before | After | Kept |
+|---|---|---|---|---|
+| Short clauses calling `%copy` directly (tried on `vector-copy`) | 300,000 copies of a 3-element vector | 2.96, 3.23, 3.14 s | 2.90, 3.24, 3.17 s | no: noise, and longer code |
+| `%extreme` testing `(= y y)`, not calling `nan?` | 1,000,000 `(max i acc 3)` | 9.72 s | 6.87 s | no: `nan?` says what it tests |
+| `%copy!` adding an offset computed once | 1,000 `vector-copy`s of 1,000 elements | 0.59, 0.57, 0.61 s | 0.53, 0.52, 0.56 s | yes, and clearer |
+| | 200,000 `(string-append "hello" " " "world")` | 3.12 s | 3.05 s | |
+
+The short clauses' re-entry is a few closure calls of fixed overhead, small
+next to the loop, so they stay as they are.  `%extreme` keeps `nan?`: the
+inline test wins only by skipping a call, and obscures what it tests.  The suite is unchanged (11
+runs; fib 0.279 to 0.278 s median, expand 0.230 to 0.227).
 
 ### After the last phase
 

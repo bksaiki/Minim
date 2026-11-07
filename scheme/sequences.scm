@@ -29,13 +29,14 @@
 ;; Copies the elements of `from` from `start` to `end` into `to` at `at`, read
 ;; by `ref` and written by `set`, in an order safe when the two overlap.
 (define (%copy! ref set to at from start end)
-  (if (<= at start)
-      (do ((i start (+ i 1)))
-          ((= i end))
-        (set to (+ at (- i start)) (ref from i)))
-      (do ((i (- end 1) (- i 1)))
-          ((< i start))
-        (set to (+ at (- i start)) (ref from i)))))
+  (let ((offset (- at start)))
+    (if (<= at start)
+        (do ((i start (+ i 1)))
+            ((= i end))
+          (set to (+ i offset) (ref from i)))
+        (do ((i (- end 1) (- i 1)))
+            ((< i start))
+          (set to (+ i offset) (ref from i))))))
 
 ;; A new sequence, made by `make`, of the elements of `x` from `start` to
 ;; `end`.
