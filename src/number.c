@@ -309,81 +309,6 @@ static minim_obj prim_ge(minim_obj *args, size_t n) {
     return compare_nums(args, n, GT | EQ, ">=: not a number");
 }
 
-// Whether the number args[0] compares with 0 as one of `outcomes`.
-static minim_obj sign_test(minim_obj *args, int outcomes, const char *msg) {
-    return boolean(cmp(num_arg(args[0], msg), (num){.i = 0}) & outcomes);
-}
-
-static minim_obj prim_is_zero(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    return sign_test(args, EQ, "zero?: not a number");
-}
-
-static minim_obj prim_is_positive(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    return sign_test(args, GT, "positive?: not a number");
-}
-
-static minim_obj prim_is_negative(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    return sign_test(args, LT, "negative?: not a number");
-}
-
-// Whether the integer args[0], a fixnum or an integral flonum, is odd.
-static bool is_odd(minim_obj *args, const char *msg) {
-    num a = num_arg(args[0], msg);
-    if (!a.flo)
-        return a.i & 1;
-    check(is_integral(a.d), msg, args[0]);
-    return fmod(a.d, 2) != 0;
-}
-
-static minim_obj prim_is_odd(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    return boolean(is_odd(args, "odd?: not an integer"));
-}
-
-static minim_obj prim_is_even(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    return boolean(!is_odd(args, "even?: not an integer"));
-}
-
-static minim_obj prim_abs(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    num a = num_arg(args[0], "abs: not a number");
-    if (a.flo)
-        return minim_make_flonum(fabs(a.d));
-    return fixnum_result(a.i < 0 ? -a.i : a.i, "abs: fixnum overflow");
-}
-
-// The greater of `a` and `b` if `greater`, else the lesser: inexact if either
-// is, and NaN if either is.
-static num extreme(num a, num b, bool greater) {
-    int c = cmp(a, b);
-    if (c == UNORDERED)
-        return flonum(NAN);
-    num r = c == (greater ? LT : GT) ? b : a;
-    return a.flo || b.flo ? flonum(num_double(r)) : r;
-}
-
-static num maximum(num a, num b) {
-    return extreme(a, b, true);
-}
-
-static num minimum(num a, num b) {
-    return extreme(a, b, false);
-}
-
-static minim_obj prim_max(minim_obj *args, size_t n) {
-    return fold(args + 1, n - 1, num_arg(args[0], "max: not a number"), maximum,
-                "max: not a number");
-}
-
-static minim_obj prim_min(minim_obj *args, size_t n) {
-    return fold(args + 1, n - 1, num_arg(args[0], "min: not a number"), minimum,
-                "min: not a number");
-}
-
 static minim_obj prim_quotient(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     intptr_t a = fixnum_arg(args[0], "quotient: not a fixnum");
@@ -490,24 +415,6 @@ static minim_obj prim_is_inexact(minim_obj *args, size_t n) {
     return boolean(num_arg(args[0], "inexact?: not a number").flo);
 }
 
-static minim_obj prim_is_finite(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    num a = num_arg(args[0], "finite?: not a number");
-    return boolean(!a.flo || isfinite(a.d));
-}
-
-static minim_obj prim_is_infinite(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    num a = num_arg(args[0], "infinite?: not a number");
-    return boolean(a.flo && isinf(a.d));
-}
-
-static minim_obj prim_is_nan(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    num a = num_arg(args[0], "nan?: not a number");
-    return boolean(a.flo && isnan(a.d));
-}
-
 static minim_obj prim_exact(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     num a = num_arg(args[0], "exact: not a number");
@@ -581,24 +488,11 @@ const minim_prim_def minim_number_prims[] = {
     {"exact-integer?", prim_is_fixnum, 1, 1},
     {"exact?", prim_is_exact, 1, 1},
     {"inexact?", prim_is_inexact, 1, 1},
-    {"finite?", prim_is_finite, 1, 1},
-    {"infinite?", prim_is_infinite, 1, 1},
-    {"nan?", prim_is_nan, 1, 1},
     {"exact", prim_exact, 1, 1},
     {"inexact", prim_inexact, 1, 1},
-    {"inexact->exact", prim_exact, 1, 1},
-    {"exact->inexact", prim_inexact, 1, 1},
     {"floor", prim_floor, 1, 1},
     {"ceiling", prim_ceiling, 1, 1},
     {"truncate", prim_truncate, 1, 1},
     {"round", prim_round, 1, 1},
-    {"zero?", prim_is_zero, 1, 1},
-    {"positive?", prim_is_positive, 1, 1},
-    {"negative?", prim_is_negative, 1, 1},
-    {"odd?", prim_is_odd, 1, 1},
-    {"even?", prim_is_even, 1, 1},
-    {"abs", prim_abs, 1, 1},
-    {"max", prim_max, 1, MINIM_VARIADIC},
-    {"min", prim_min, 1, MINIM_VARIADIC},
     {NULL, NULL, 0, 0},
 };

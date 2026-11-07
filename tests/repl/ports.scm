@@ -60,6 +60,8 @@ stdin
 (read-string 1 (open-input-string ""))
 (read-line (open-input-string ""))
 (read-line (open-input-string "\n"))
+(let ((p (open-input-string "a\r\nb\rc")))
+  (list (read-line p) (read-line p) (read-line p) (read-line p)))
 
 ; Writing to a string port, which grows as needed.
 (define sink (open-output-string))
@@ -153,6 +155,8 @@ stdin
 (read-string -1)
 (write-string "abc" (current-output-port) 2 1)
 (write-string "abc" (current-output-port) 0 4)
+(read-string 'x 'y)
+(write-string 1 'y)
 (read-char (current-input-port) 1)
 (read (open-output-string))
 (write 1 (open-input-string ""))
@@ -213,6 +217,8 @@ bout
 (read-u8 closed-bin)
 (read-bytevector! buf bin 0 1 2)
 (write-bytevector #u8(1) bout 0 1 2)
+(read-bytevector! 'x 'y)
+(write-bytevector #u8(1) (open-output-string))
 
 ; Closing the standard input port ends the REPL.
 (close-port (current-input-port))

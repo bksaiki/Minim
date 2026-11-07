@@ -7,6 +7,13 @@ Primitive procedures are C functions, bound as global symbol values by
 max}`, which `minim_prims_init` registers; `src/prims.h` has the table type
 and the shared argument checks.  The evaluator calls them; see `eval.md`.
 
+A procedure is a primitive only if the kernel needs it: a type's predicate,
+its basic operations (`car`, `char<?`, `+`, `length`) and constructors
+(`cons`, `make-vector`, `void`), conversions between it and lists
+(`string->list`), or what only C can do (the OS, the collector, the
+evaluator, Unicode tables, `libm`).  The rest is in the prelude
+(`prelude.md`), though interpreted Scheme is slower.
+
 ## Primitives the evaluator applies
 
 `apply`, `load`, `values`, `call-with-values`, `%call/cc`, and
@@ -62,23 +69,18 @@ there on, so a fixnum overflow before one still raises.
 | `(- n)`, `(- n m ...)` | negation, or `n` minus the rest |
 | `(* n ...)` | product; `1` with no arguments |
 | `(/ n)`, `(/ n m ...)` | reciprocal, or `n` divided by the rest: exact if the fixnums divide evenly, else a flonum.  An exact zero divisor raises; an inexact one gives an infinity or NaN |
-| `(abs n)` | absolute value |
-| `(max n ...)`, `(min n ...)` | the greatest or least; inexact if any argument is, NaN if any is |
 | `(quotient n m)` | `n / m`, truncated toward zero; fixnums only |
 | `(remainder n m)` | remainder with the sign of `n`; fixnums only |
 | `(= n ...)` | whether all are equal |
 | `(< n ...)`, `(> ...)`, `(<= ...)`, `(>= ...)` | whether each adjacent pair is in order |
-| `(zero? n)`, `(positive? n)`, `(negative? n)` | how `n` compares with 0 |
-| `(odd? n)`, `(even? n)` | parity of the integer `n`, a fixnum or integral flonum |
 | `(floor n)`, `(ceiling n)`, `(truncate n)`, `(round n)` | `n` rounded; `round` to even.  A fixnum is itself |
-| `(exact n)`, `(inexact->exact n)` | the fixnum equal to `n`; raises `no exact representation` for a non-integer, infinity, or NaN, `fixnum out of range` past the range |
-| `(inexact n)`, `(exact->inexact n)` | the flonum nearest `n` |
+| `(exact n)` | the fixnum equal to `n`; raises `no exact representation` for a non-integer, infinity, or NaN, `fixnum out of range` past the range |
+| `(inexact n)` | the flonum nearest `n` |
 | `(number? x)`, `(complex? x)`, `(real? x)` | whether `x` is a number |
 | `(rational? x)`, `(integer? x)` | whether `x` is a finite, or integral, number |
 | `(exact? n)`, `(inexact? n)` | whether `n` is a fixnum, or flonum |
 | `(exact-integer? x)`, `(fixnum? x)` | whether `x` is a fixnum |
 | `(flonum? x)` | whether `x` is a flonum; Minim's own, after Chez, in `(minim)` |
-| `(finite? n)`, `(infinite? n)`, `(nan? n)` | `(scheme inexact)`'s tests of `n` |
 | `(number->string n [radix])` | `n` in radix 2, 8, 10 (default), or 16, as `write` prints it; a flonum's radix only 10 |
 | `(string->number s [radix])` | the number `s` denotes, as the reader reads it, in the radix (default 10) unless a prefix gives one; `#f` if it isn't one |
 
@@ -94,7 +96,6 @@ NaN is false.
 | `(char->integer c)` | the code point of `c` |
 | `(integer->char k)` | the char with code point `k`, which must be a Unicode scalar value |
 | `(char=? c ...)`, `(char<? ...)`, `(char>? ...)`, `(char<=? ...)`, `(char>=? ...)` | whether each adjacent pair is in order, by code point |
-| `(char-ci=? c ...)`, `(char-ci<? ...)`, ... | the same, by simple case folding |
 | `(char-alphabetic? c)`, `(char-upper-case? c)`, `(char-lower-case? c)`, `(char-whitespace? c)` | Unicode's `Alphabetic`, `Uppercase`, `Lowercase`, `White_Space` |
 | `(char-numeric? c)` | whether `c` is a decimal digit, general category `Nd` |
 | `(digit-value c)` | the decimal digit `c`'s value, 0 to 9, or `#f` |
@@ -161,15 +162,14 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values, hashing flonums' bits.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
-| `(boolean=? b ...)`, `(symbol=? s ...)` | whether the booleans, or symbols, are all the same |
 | `(%closure-code x)` | the closure `x`'s form, `(lambda ...)` or `(case-lambda ...)`, shared by every closure it makes; `#f` for anything else |
 | `(void)` | void; Minim's own, after Chez, in `(minim)` |
+| `(procedure-rename proc name)` | a copy of the closure or primitive `proc` printing as the symbol `name`; Minim's own, after Racket, in `(minim)` |
 
 ### Vectors
 
 | Call | Result |
 |---|---|
-| `(vector x ...)` | new vector of the arguments |
 | `(make-vector k [fill])` | new vector of length `k`, filled with `fill` (default 0) |
 | `(vector-ref v i)` | element `i` of `v` |
 | `(vector-set! v i x)` | sets element `i` of `v`; void |
@@ -177,24 +177,15 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(vector->list v [start [end]])` | the elements of `v`, as a list |
 | `(list->vector lst)` | a new vector of the elements of the proper list `lst` |
 | `(vector? x)` | whether `x` is a vector |
-| `(vector-copy v [start [end]])` | a new vector of the elements of `v` |
-| `(vector-copy! to at from [start [end]])` | copies elements of `from` into `to` at `at`, correctly when they overlap; void |
-| `(vector-fill! v x [start [end]])` | sets elements of `v` to `x`; void |
-| `(vector-append v ...)` | a new vector of the arguments' elements in order |
-| `(string->vector s [start [end]])`, `(vector->string v [start [end]])` | a new vector of the chars of `s`; a new string of the chars in `v` |
 
 ### Bytevectors
 
 | Call | Result |
 |---|---|
-| `(bytevector b ...)` | new bytevector of the bytes, fixnums 0 to 255 |
 | `(make-bytevector k [b])` | new bytevector of length `k`, filled with `b` (default 0) |
 | `(bytevector? x)` | whether `x` is a bytevector |
 | `(bytevector-length bv)` | length of `bv` |
 | `(bytevector-u8-ref bv i)`, `(bytevector-u8-set! bv i b)` | byte `i` of `bv`; sets it, void |
-| `(bytevector-copy bv [start [end]])` | new bytevector of the bytes of `bv` |
-| `(bytevector-copy! to at from [start [end]])` | copies bytes of `from` into `to` at `at`, correctly when they overlap; void |
-| `(bytevector-append bv ...)` | new bytevector of the arguments' bytes in order |
 | `(utf8->string bv [start [end]])` | new string the bytes encode in UTF-8; a malformed sequence decodes to U+FFFD |
 | `(string->utf8 s [start [end]])` | new bytevector of the UTF-8 encoding of the chars of `s` |
 
@@ -207,13 +198,7 @@ through `%record-ref`, but only `%make-record-type` sets them.
 | `(string-length s)` | length of `s` |
 | `(string-ref s i)` | char `i` of `s` |
 | `(string-set! s i c)` | sets char `i` of `s`, which must be mutable (symbol names aren't); void |
-| `(string c ...)` | new string of the chars `c ...` |
-| `(string-append s ...)` | new string of the arguments' chars in order |
-| `(substring s start end)`, `(string-copy s [start [end]])` | new string of chars `start` through `end - 1` |
-| `(string-copy! to at from [start [end]])` | copies chars of `from` into the mutable `to` at `at`, correctly when they overlap; void |
-| `(string-fill! s c [start [end]])` | sets chars of the mutable `s` to `c`; void |
-| `(string=? s ...)`, `(string<? ...)`, `(string>? ...)`, `(string<=? ...)`, `(string>=? ...)` | whether each adjacent pair is in order, lexicographically by code point |
-| `(string-ci=? s ...)`, `(string-ci<? ...)`, ... | the same, of the strings' full case foldings |
+| `(mutable-string? x)` | whether `x` is a mutable string; Minim's own, after Chez, in `(minim)` |
 | `(string-upcase s)`, `(string-downcase s)`, `(string-foldcase s)` | new string of Unicode's full mappings, which may change its length (`ß` upcases to `SS`); downcasing makes a capital sigma ending a word final (`ς`) |
 | `(string->list s [start [end]])` | list of the chars of `s` |
 | `(list->string lst)` | new string of the chars in the list `lst` |
@@ -242,12 +227,12 @@ uninterned symbol, so no value a program can build looks like an alias.
 
 The port primitives are in `src/port.c`, listed in `ports.md`.  Those whose
 port is optional are Scheme wrappers (`scheme/ports.scm`) over primitives
-taking it: `%read`, `%read-char`, `%peek-char`, `%read-line`,
-`%read-string`, `%char-ready?`, `%write`, `%display`, `%write-char`,
-`%write-string`, `%flush-output-port`, `%read-u8`, `%peek-u8`,
-`%u8-ready?`, `%read-bytevector`, `%read-bytevector!`, `%write-u8`, and
-`%write-bytevector`.  `(%standard-port i)` is the standard input (0), output
-(1), or error (2) port.
+taking it: `%read`, `%read-char`, `%peek-char`, `%char-ready?`, `%write`,
+`%display`, `%write-char`, `%flush-output-port`, `%read-u8`, `%peek-u8`,
+`%u8-ready?`, and `%write-u8`.  `close-input-port`, `close-output-port`,
+and the line, string, and bytevector reads and writes are Scheme over
+these.  `(%standard-port i)` is the standard input (0), output (1), or
+error (2) port.
 
 ### Storage
 

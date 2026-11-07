@@ -216,31 +216,6 @@ static minim_obj prim_char_foldcase(minim_obj *args, size_t n) {
     return minim_char(minim_unicode_foldcase(c));
 }
 
-// The folded code point of the char `x`, for compare; raises `msg` if `x` isn't a char.
-static intptr_t folded_char_arg(minim_obj x, const char *msg) {
-    return minim_unicode_foldcase((uint32_t)char_arg(x, msg));
-}
-
-static minim_obj prim_char_ci_eq(minim_obj *args, size_t n) {
-    return compare(args, n, folded_char_arg, eq, "char-ci=?: not a char");
-}
-
-static minim_obj prim_char_ci_lt(minim_obj *args, size_t n) {
-    return compare(args, n, folded_char_arg, lt, "char-ci<?: not a char");
-}
-
-static minim_obj prim_char_ci_gt(minim_obj *args, size_t n) {
-    return compare(args, n, folded_char_arg, gt, "char-ci>?: not a char");
-}
-
-static minim_obj prim_char_ci_le(minim_obj *args, size_t n) {
-    return compare(args, n, folded_char_arg, le, "char-ci<=?: not a char");
-}
-
-static minim_obj prim_char_ci_ge(minim_obj *args, size_t n) {
-    return compare(args, n, folded_char_arg, ge, "char-ci>=?: not a char");
-}
-
 const minim_prim_def minim_char_prims[] = {
     {"char?", prim_is_char, 1, 1},
     {"char->integer", prim_char_to_integer, 1, 1},
@@ -259,10 +234,5 @@ const minim_prim_def minim_char_prims[] = {
     {"char-upcase", prim_char_upcase, 1, 1},
     {"char-downcase", prim_char_downcase, 1, 1},
     {"char-foldcase", prim_char_foldcase, 1, 1},
-    {"char-ci=?", prim_char_ci_eq, 1, MINIM_VARIADIC},
-    {"char-ci<?", prim_char_ci_lt, 1, MINIM_VARIADIC},
-    {"char-ci>?", prim_char_ci_gt, 1, MINIM_VARIADIC},
-    {"char-ci<=?", prim_char_ci_le, 1, MINIM_VARIADIC},
-    {"char-ci>=?", prim_char_ci_ge, 1, MINIM_VARIADIC},
     {NULL, NULL, 0, 0},
 };

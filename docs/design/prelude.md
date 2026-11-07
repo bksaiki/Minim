@@ -6,23 +6,28 @@ them (`MINIM_SCHEME_SOURCES`):
 
 | File | Holds |
 |---|---|
+| `base.scm` | `identity`, and the comparisons of booleans, symbols, and chars ignoring case |
 | `lists.scm` | the list library |
+| `sequences.scm` | strings, vectors, and bytevectors beyond their primitives, and their higher-order procedures |
+| `numbers.scm` | the number procedures built on arithmetic and comparison |
 | `control.scm` | `call/cc`, `dynamic-wind`, exceptions, `guard`'s procedure, and parameters |
 | `records.scm` | the procedures `define-record-type` binds |
 | `expander.scm` | the expander (`macros.md`) |
 | `libraries.scm` | `define-library`, `import`, library files, and programs |
 | `derived.scm` | the derived forms, as macros |
 | `eval.scm` | `eval`, its environments, and `%expand` |
-| `ports.scm` | the current ports, and the port procedures with optional ports (`ports.md`) |
-| `sequences.scm` | the higher-order procedures of strings and vectors |
+| `ports.scm` | the current ports, the port procedures with optional ports, and the bulk reads and writes (`ports.md`) |
 | `lazy.scm` | promises: `delay`, `delay-force`, `force`, `make-promise`, `promise?` |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
 
-The library holds what is easiest in Scheme, above all higher-order
-procedures, which primitives can't express because they can't call closures
-(see `primitives.md`).  A procedure with optional arguments takes them by
-`case-lambda`, so an extra argument is an arity error naming it; a rest
-parameter is only for any number of arguments.
+The library holds what the kernel doesn't need (`primitives.md`): above
+all higher-order procedures, which primitives can't express because they
+can't call closures, and operations built on a type's primitives, such as
+`string-append` and `zero?`.  These check their arguments and raise as a
+primitive would (`string-append: not a string`).  A procedure with
+optional arguments takes them by `case-lambda`, so an extra argument is an
+arity error naming it; a rest parameter is only for any number of
+arguments.
 
 ## The boot file
 
@@ -63,6 +68,8 @@ the one it contains.
 
 ## Library
 
+### Lists
+
 | Procedure | Result |
 |---|---|
 | `(list? x)` | whether `x` is a proper list; `#f` for cyclic lists |
@@ -76,13 +83,49 @@ the one it contains.
 | `(assq x alist)`, `(assv x alist)`, `(assoc x alist [compare])` | the first pair whose car matches `x`, likewise; `#f` if none |
 | `(map f lst ...)` | a list of `f` applied to corresponding elements, left to right, stopping at the shortest list |
 | `(for-each f lst ...)` | like `map`, for effect; void |
-| `(string-map f s ...)`, `(string-for-each f s ...)` | `map` and `for-each` over the strings' chars, as lists: a new string of `f`'s results, or void |
-| `(vector-map f v ...)`, `(vector-for-each f v ...)` | likewise over the vectors' elements: a new vector, or void |
 | `(filter keep? lst)` | the elements satisfying `keep?`, in order |
 | `(fold kons knil lst)`, `(fold-right kons knil lst)` | SRFI-1 folds, calling `(kons elem acc)` from the left or right |
+
+### Strings, vectors, and bytevectors
+
+| Procedure | Result |
+|---|---|
+| `(string c ...)`, `(vector x ...)`, `(bytevector b ...)` | a new string, vector, or bytevector of the arguments; bytes are fixnums 0 to 255 |
+| `(string-append s ...)`, `(vector-append v ...)`, `(bytevector-append bv ...)` | a new one of the arguments' elements in order |
+| `(string-copy s [start [end]])`, `(vector-copy ...)`, `(bytevector-copy ...)` | a new one of the elements `start` through `end - 1` |
+| `(substring s start end)` | `(string-copy s start end)` |
+| `(string-copy! to at from [start [end]])`, `(vector-copy! ...)`, `(bytevector-copy! ...)` | copies elements of `from` into `to` at `at`, correctly when they overlap; void |
+| `(string-fill! s c [start [end]])`, `(vector-fill! v x [start [end]])` | sets elements to `c` or `x`; void |
+| `(string->vector s [start [end]])`, `(vector->string v [start [end]])` | a new vector of the chars of `s`; a new string of the chars in `v` |
+| `(string=? s ...)`, `(string<? ...)`, `(string>? ...)`, `(string<=? ...)`, `(string>=? ...)` | whether each adjacent pair is in order, lexicographically by code point |
+| `(string-ci=? s ...)`, `(string-ci<? ...)`, ... | the same, of the strings' `string-foldcase`s |
+| `(string-map f s ...)`, `(string-for-each f s ...)` | `map` and `for-each` over the strings' chars, as lists: a new string of `f`'s results, or void |
+| `(vector-map f v ...)`, `(vector-for-each f v ...)` | likewise over the vectors' elements: a new vector, or void |
+
+`string-copy!` and `string-fill!` raise `immutable string` before writing
+(`mutable-string?`).  A shared copy loop, `%copy!`, takes the types'
+accessors, so it serves every type and `string->vector` alike.
+
+### Numbers, chars, booleans, and symbols
+
+| Procedure | Result |
+|---|---|
+| `(zero? n)`, `(positive? n)`, `(negative? n)` | how `n` compares with 0 |
+| `(odd? n)`, `(even? n)` | parity of the integer `n`, a fixnum or integral flonum |
+| `(abs n)` | absolute value; `0.0` for `-0.0` |
+| `(max n ...)`, `(min n ...)` | the greatest or least; inexact if any argument is, NaN if any is |
+| `(finite? n)`, `(infinite? n)`, `(nan? n)` | `(scheme inexact)`'s tests of `n` |
+| `(exact->inexact n)`, `(inexact->exact n)` | `inexact` and `exact` renamed by `procedure-rename`, so their errors name `inexact` and `exact` |
+| `(char-ci=? c ...)`, `(char-ci<? ...)`, ... | the char comparisons, of the chars' `char-foldcase`s |
+| `(boolean=? b ...)`, `(symbol=? s ...)` | whether the booleans, or symbols, are all the same |
+| `(identity x)` | `x`; Minim's own, in `(minim)` |
+
+### Control
+
+| Procedure | Result |
+|---|---|
 | `(call/cc f)`, `(call-with-current-continuation f)` | `f` applied to the current continuation, a procedure taking any number of values to return |
 | `(dynamic-wind before thunk after)` | calls `before`, `thunk`, then `after`, returning `thunk`'s values; a continuation leaving `thunk`'s extent runs `after`, and one entering it runs `before` |
-
 | `(with-exception-handler handler thunk)` | calls `thunk` with `handler` installed for its extent |
 | `(raise obj)` | calls the innermost handler on `obj`, with the handlers outside it installed; if it returns, raises `handler returned` with irritants `(obj)` to them |
 | `(raise-continuable obj)` | likewise, returning the handler's values |
@@ -127,5 +170,5 @@ the promise returned, then loops, so a chain of `delay-force`s collapses
 into one box and runs in constant space.  `force` of a non-promise raises.
 
 Prelude procedures print with their names, as in `arity mismatch:
-#<procedure read-char>`.  Errors inside them come from the primitives they call, except those of
-`raise`.
+#<procedure read-char>`.  Errors inside those that don't check their
+arguments come from the primitives they call, except those of `raise`.

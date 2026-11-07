@@ -50,5 +50,6 @@ c
 (bytevector-copy #u8(1 2) 2 1)
 (bytevector-copy! c 4 #u8(1 2))
 (bytevector-append #u8(1) #(2))
+(bytevector-copy! 'x 0 'y)
 (utf8->string "abc")
 (string->utf8 #u8(1))

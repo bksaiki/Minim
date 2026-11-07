@@ -12,4 +12,6 @@ error: vector-fill!: not a vector: (1)
 error: vector-append: not a vector: (b)
 error: string->vector: not a string: abc
 error: vector->string: not a char: 1
+error: vector-copy!: not a vector: x
+error: vector->string: not a vector: "abc"
 error: vector->list: not a vector: ((a))

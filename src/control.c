@@ -86,6 +86,22 @@ static minim_obj prim_closure_code(minim_obj *args, size_t n) {
     return minim_is_closure(args[0]) ? minim_closure_code(args[0]) : MINIM_FALSE;
 }
 
+// A copy of the closure or primitive args[0] named by the symbol args[1].
+static minim_obj prim_procedure_rename(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    minim_obj p = args[0];
+    check(minim_is_closure(p) || minim_is_primitive(p),
+          "procedure-rename: not a closure or primitive", p);
+    check(minim_is_symbol(args[1]), "procedure-rename: not a symbol", args[1]);
+    if (minim_is_primitive(p)) {
+        return minim_make_primitive(args[1], minim_primitive_fn(p), minim_primitive_min_arity(p),
+                                    minim_primitive_max_arity(p));
+    }
+    minim_obj c = minim_make_closure(minim_closure_code(p), minim_closure_env(p));
+    minim_set_closure_name(c, args[1]);
+    return c;
+}
+
 const minim_prim_def minim_control_prims[] = {
     {"apply", minim_prim_apply, 2, MINIM_VARIADIC},
     {"load", minim_prim_load, 1, 1},
@@ -100,5 +116,6 @@ const minim_prim_def minim_control_prims[] = {
     {"procedure?", prim_is_procedure, 1, 1},
     {"void", prim_void, 0, 0},
     {"%closure-code", prim_closure_code, 1, 1},
+    {"procedure-rename", prim_procedure_rename, 2, 2},
     {NULL, NULL, 0, 0},
 };

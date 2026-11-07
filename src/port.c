@@ -311,21 +311,6 @@ static minim_obj prim_close_port(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
-static minim_obj prim_close_input_port(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    check(has_flags(args[0], MINIM_PORT_INPUT), "close-input-port: not an input port", args[0]);
-    minim_port_close(args[0]);
-    return MINIM_VOID;
-}
-
-static minim_obj prim_close_output_port(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    check(has_flags(args[0], MINIM_PORT_OUTPUT), "close-output-port: not an output port",
-          args[0]);
-    minim_port_close(args[0]);
-    return MINIM_VOID;
-}
-
 static minim_obj prim_open_input_string(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "open-input-string: not a string", args[0]);
@@ -366,36 +351,6 @@ static minim_obj prim_peek_char(minim_obj *args, size_t n) {
     return char_or_eof(minim_port_peek_char(args[0]));
 }
 
-// The next line, without its \n, \r, or \r\n; the eof object at the end.
-static minim_obj prim_read_line(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    check_open(args[0], MINIM_PORT_INPUT, false, "read-line: not an open textual input port");
-    minim_obj line = minim_open_output_string();
-    MINIM_FRAME(&line);
-    size_t len = 0;
-    int32_t c;
-    for (; (c = minim_port_read_char(args[0])) >= 0 && c != '\n' && c != '\r'; len++)
-        minim_port_write_char(line, (uint32_t)c);
-    if (c == '\r' && minim_port_peek_char(args[0]) == '\n')
-        minim_port_read_char(args[0]);
-    MINIM_RETURN(c < 0 && len == 0 ? MINIM_EOF : minim_get_output_string(line));
-}
-
-// Up to `args[0]` chars, or the eof object if there are none before the end.
-static minim_obj prim_read_string(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    intptr_t k = fixnum_arg(args[0], "read-string: not a non-negative fixnum");
-    check(k >= 0, "read-string: not a non-negative fixnum", args[0]);
-    check_open(args[1], MINIM_PORT_INPUT, false, "read-string: not an open textual input port");
-    minim_obj chars = minim_open_output_string();
-    MINIM_FRAME(&chars);
-    size_t len = 0;
-    int32_t c = 0;
-    for (; len < (size_t)k && (c = minim_port_read_char(args[1])) >= 0; len++)
-        minim_port_write_char(chars, (uint32_t)c);
-    MINIM_RETURN(c < 0 && len == 0 ? MINIM_EOF : minim_get_output_string(chars));
-}
-
 static minim_obj prim_read(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     check_open(args[0], MINIM_PORT_INPUT, false, "read: not an open textual input port");
@@ -414,19 +369,6 @@ static minim_obj prim_write_char(minim_obj *args, size_t n) {
     uint32_t c = (uint32_t)char_arg(args[0], "write-char: not a char");
     check_open(args[1], MINIM_PORT_OUTPUT, false, "write-char: not an open textual output port");
     minim_port_write_char(args[1], c);
-    return MINIM_VOID;
-}
-
-// Writes the string `args[0]` from `args[2]` to `args[3]`, #f for its end.
-static minim_obj prim_write_string(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    check(minim_is_string(args[0]), "write-string: not a string", args[0]);
-    check_open(args[1], MINIM_PORT_OUTPUT, false, "write-string: not an open textual output port");
-    size_t len = minim_string_length(args[0]);
-    size_t end = args[3] == MINIM_FALSE ? len : bound_arg(args[3], len, "write-string: bad end");
-    size_t start = bound_arg(args[2], end, "write-string: bad start");
-    for (size_t i = start; i < end; i++)
-        minim_port_write_char(args[1], minim_string_ref(args[0], i));
     return MINIM_VOID;
 }
 
@@ -537,61 +479,11 @@ static minim_obj prim_is_u8_ready(minim_obj *args, size_t n) {
     return MINIM_TRUE;
 }
 
-// Up to `args[0]` bytes, or the eof object if there are none before the end.
-static minim_obj prim_read_bytevector(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    intptr_t k = fixnum_arg(args[0], "read-bytevector: not a non-negative fixnum");
-    check(k >= 0, "read-bytevector: not a non-negative fixnum", args[0]);
-    check_open(args[1], MINIM_PORT_INPUT, true, "read-bytevector: not an open binary input port");
-    minim_obj bytes = open_output_bytevector();
-    MINIM_FRAME(&bytes);
-    size_t len = 0;
-    int32_t b = 0;
-    for (; len < (size_t)k && (b = read_byte(args[1])) >= 0; len++)
-        write_byte(&bytes, (uint8_t)b);
-    MINIM_RETURN(b < 0 && len == 0 ? MINIM_EOF : get_output_bytevector(bytes));
-}
-
-// Reads into the bytevector args[0], in the range args[2] and args[3], from
-// args[1]; returns how many bytes, or the eof object if there are none before
-// the end.
-static minim_obj prim_read_bytevector_into(minim_obj *args, size_t n) {
-    check(minim_is_bytevector(args[0]), "read-bytevector!: not a bytevector", args[0]);
-    check_open(args[1], MINIM_PORT_INPUT, true,
-               "read-bytevector!: not an open binary input port");
-    range r = range_args(args, n, 2, minim_bytevector_length(args[0]),
-                         "read-bytevector!: bad index");
-    size_t i = r.start;
-    int32_t b = 0;
-    for (; i < r.end && (b = read_byte(args[1])) >= 0; i++)
-        minim_bytevector_data(args[0])[i] = (uint8_t)b;
-    return b < 0 && i == r.start ? MINIM_EOF : minim_fixnum((intptr_t)(i - r.start));
-}
-
 static minim_obj prim_write_u8(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     uint8_t b = byte_arg(args[0], "write-u8: not a byte");
     check_open(args[1], MINIM_PORT_OUTPUT, true, "write-u8: not an open binary output port");
     write_byte(&args[1], b);
-    return MINIM_VOID;
-}
-
-// Writes the bytes of the bytevector args[0] in the range args[2] and args[3]
-// to args[1].
-static minim_obj prim_write_bytevector(minim_obj *args, size_t n) {
-    check(minim_is_bytevector(args[0]), "write-bytevector: not a bytevector", args[0]);
-    check_open(args[1], MINIM_PORT_OUTPUT, true,
-               "write-bytevector: not an open binary output port");
-    range r = range_args(args, n, 2, minim_bytevector_length(args[0]),
-                         "write-bytevector: bad index");
-    size_t count = r.end - r.start;
-    if (minim_port_flags(args[1]) & MINIM_PORT_FILE) {
-        fwrite(minim_bytevector_data(args[0]) + r.start, 1, count, minim_port_file(args[1]));
-        return MINIM_VOID;
-    }
-    size_t at = reserve_bytes(&args[1], count);
-    memcpy(minim_bytevector_data(fields(args[1])[1]) + at, minim_bytevector_data(args[0]) + r.start,
-           count);
     return MINIM_VOID;
 }
 
@@ -622,8 +514,6 @@ const minim_prim_def minim_port_prims[] = {
     {"input-port-open?", prim_is_input_port_open, 1, 1},
     {"output-port-open?", prim_is_output_port_open, 1, 1},
     {"close-port", prim_close_port, 1, 1},
-    {"close-input-port", prim_close_input_port, 1, 1},
-    {"close-output-port", prim_close_output_port, 1, 1},
     {"open-input-string", prim_open_input_string, 1, 1},
     {"open-output-string", prim_open_output_string, 0, 0},
     {"open-input-file", prim_open_input_file, 1, 1},
@@ -633,12 +523,9 @@ const minim_prim_def minim_port_prims[] = {
     {"%standard-port", prim_standard_port, 1, 1},
     {"%read-char", prim_read_char, 1, 1},
     {"%peek-char", prim_peek_char, 1, 1},
-    {"%read-line", prim_read_line, 1, 1},
-    {"%read-string", prim_read_string, 2, 2},
     {"%read", prim_read, 1, 1},
     {"%char-ready?", prim_is_char_ready, 1, 1},
     {"%write-char", prim_write_char, 2, 2},
-    {"%write-string", prim_write_string, 4, 4},
     {"%flush-output-port", prim_flush_output_port, 1, 1},
     {"get-output-string", prim_get_output_string, 1, 1},
     {"%write", prim_write, 2, 2},
@@ -651,9 +538,6 @@ const minim_prim_def minim_port_prims[] = {
     {"%read-u8", prim_read_u8, 1, 1},
     {"%peek-u8", prim_peek_u8, 1, 1},
     {"%u8-ready?", prim_is_u8_ready, 1, 1},
-    {"%read-bytevector", prim_read_bytevector, 2, 2},
-    {"%read-bytevector!", prim_read_bytevector_into, 2, 4},
     {"%write-u8", prim_write_u8, 2, 2},
-    {"%write-bytevector", prim_write_bytevector, 2, 4},
     {NULL, NULL, 0, 0},
 };

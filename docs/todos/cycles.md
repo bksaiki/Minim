@@ -1,0 +1,204 @@
+# Cycles: datum labels, `write-shared`, and `equal?` on cyclic data
+
+Implementation plan.  The design is settled; what follows is the phase
+breakdown, one phase per commit.
+
+## Working policy
+
+- **Pause after each phase for review.** Do not begin the next phase until the
+  current one has been looked at.
+- **Do not commit.** The author of the change leaves the working tree dirty;
+  commits are made by the repository owner.
+- **Run only the tests relevant to the phase.** The full suite runs once, at
+  the end, after the last phase.
+- **Comments stay succinct**, and notes about *process* (what was tried, what
+  a phase decided, why an ordering was chosen) belong in this document, not in
+  source comments.
+- **Design docs are synced after the last phase**, not during the phases, so
+  they never describe an intermediate state.  Each phase records its decisions
+  in this document instead.
+- **Design docs stay succinct**: only the details a reader needs to understand
+  the current implementation, said in as few words as possible.
+
+## Context
+
+Minim has no way to read, write, or compare cyclic data:
+
+| Input | Today | R7RS |
+|---|---|---|
+| `(equal? c c*)`, two separately built circular lists | loops forever | "must always terminate" (6.1) |
+| `(write c)` | loops forever | labels at least the objects on a cycle; no labels if there are no cycles (6.13.3) |
+| `(display c)` | loops forever | must not loop on self-referencing pairs, vectors, or records |
+| `(write-shared x)` | unbound | labels every pair and vector that appears more than once |
+| `(write-simple c)` | loops forever, as allowed | never labels |
+| `(read (open-input-string "#0=(1 . #0#)"))` | `bad # syntax` | a circular list (2.4) |
+
+`write` and `write-simple` are both `%write` (`scheme/ports.scm`);
+`(scheme write)` lacks `write-shared`.  The conformance reports fail on this
+in 6.13 (`write-shared`) and Read syntax (`#0=`, twice).
+
+The pieces involved:
+
+- `is_equal` (`src/equal.c`) compares with an explicit stack of pending
+  pairs; nothing in it allocates on the heap.
+- The printer (`src/print.c`) walks a datum recursively into a sink, never
+  allocating on the heap, so `minim_write` is safe on error paths.
+- The reader (`src/read.c`) reads `#` syntax in `read_hash`, which pushes
+  `#` and reads to a delimiter; it keeps no state between data.
+
+## Design
+
+**One object table.**  A new `src/table.h` / `src/table.c`: an
+open-addressing hash table from objects to words, keyed by address, in
+malloc'd memory.  Its keys are addresses, so it is valid only while nothing
+allocates on the heap; `equal?`, the printer's walks, and the reader's patch
+walk all qualify.  It serves all three phases.
+
+**`equal?`** follows Adams and Dybvig ("Efficient Nondestructive Equality
+Checking for Trees and Graphs", ICFP 2008), as Chez does, simplified to one
+switch: `is_equal` compares as today until it has compared `EQUAL_BUDGET`
+pairs and vectors; after that, before comparing two of them it looks them
+up in a union-find over the table, skipping them if they are already in one
+class and otherwise merging the classes and comparing.  Assuming equal what
+is being compared is sound: if they differ, the comparison fails anyway.
+Merging bounds the work by the number of objects, so it terminates.  Acyclic
+data under the budget pays nothing.  `equal-hash` already terminates.
+
+**The printer** walks a pair or vector datum once before printing it, with
+an explicit stack, recording in the table:
+
+- for `write` and `display`, the objects reached again while still on the
+  walk's stack: the targets of back edges, which are on cycles;
+- for `write-shared`, every pair and vector reached a second time.
+
+Only pairs and vectors are traced; records, strings, and the rest print
+without their contents' structure.  While printing, a recorded object prints
+as `#n=` and its datum the first time, numbered from 0 in print order, and
+as `#n#` after.  The loop over a list's cdrs stops at a recorded tail, which
+prints dotted: `(1 . #0=(2 . #0#))`.  `abbreviation` doesn't abbreviate a
+`(quote d)` whose second pair is recorded, which would hide it.
+`write-simple` skips the walk.  The table is freed after printing, so the
+printer still never allocates on the heap.
+
+`minim_write` and `minim_port_write` label cycles, as `write`;
+`minim_port_display` too.  New: `minim_port_write_shared` and
+`minim_port_write_simple`, behind `%write-shared` and `%write-simple` in
+`src/port.c`.  `(scheme write)` gains `write-shared`.
+
+**The reader** reads `#n=` and `#n#` (R7RS 2.4) in `read_hash`: a `#`
+followed by digits, then `=` or `#`.  Labels are scoped to the outermost
+datum: `read_datum` starts an empty list of them, which the `source`
+holds, rooted by its caller.  Each is `#(n placeholder value referenced?)`:
+
+- `#n=` makes a fresh placeholder, a new pair, then reads the datum.
+- `#n#` gives the value if the datum is read, else the placeholder, marking
+  the label referenced.
+- After the datum, if the label was referenced, a patch walk replaces the
+  placeholder in the datum's pairs and vectors, with a visited table, since
+  inner labels may have made it cyclic.
+
+Errors, as read errors: `#n#` of an undefined label, `#n=#n#` (the
+placeholder itself), a label defined twice in one datum (as Chez), and `#`
+with digits then anything else.
+
+## Phases
+
+### Phase 1 - The object table, and `equal?` on cycles
+
+- `src/table.h`, `src/table.c` (new; `CMakeLists.txt`): the table.  Find a
+  key's value; add a key, its value zero; free.
+- `src/equal.c`: `EQUAL_BUDGET`, and the union-find after it.
+
+First, because the printer and reader phases reuse the table, and
+`equal?` checks their results.
+
+Tests: `tests/repl/equality.scm`: circular lists built with `set-cdr!`,
+equal with different periods (`#0=(1 2 . #0#)` and `#0=(1 2 1 2 . #0#)`'s
+shapes) and unequal; a vector containing itself; a cycle through cars;
+a long acyclic list, past the budget, still equal and unequal.  Measure a
+new `bench/equal.scm` (`equal?` of two long lists and of deep trees)
+against `main`.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'equality|r7rs' && ctest --preset stress -R equality
+```
+
+### Phase 2 - Labels in `write`, `display`, and `write-shared`
+
+- `src/print.c`: the walk, labels in the sink, the cdr loop and
+  `abbreviation` stopping at recorded objects.
+- `include/minim.h`: `minim_port_write_shared`, `minim_port_write_simple`.
+- `src/port.c`: `%write-shared`, `%write-simple`.
+- `scheme/ports.scm`: `write-shared`; `write-simple` through
+  `%write-simple`.  `scheme/standard.scm`: `write-shared` in `(scheme
+  write)`.  `scheme/prelude.boot` regenerated.
+
+Before the reader, so the reader's tests can print what they read.
+
+Tests: `tests/test_print.c`: a circular list, `#0=(1 2 . #0#)`; a cycle
+through the car, `#0=(#0#)`; a vector holding itself, `#0=#(1 #0#)`; a
+cyclic tail, `(1 . #0=(2 . #0#))`; shared acyclic structure unlabeled by
+`write`; two cycles numbered in print order.  `tests/repl/ports.scm` (or a
+new `write.scm`): `write-shared` of `(let ((x (list 1 2))) (list x x))` as
+`(#0=(1 2) #0#)`; `display` of a cycle; `write-simple` of shared data
+unlabeled.  Measure a new `bench/write.scm` (writing a long list and a big
+tree to a string port) against `main`.  The 6.13 report updated.
+
+```sh
+cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'print|ports|write|r7rs'
+```
+
+### Phase 3 - Datum labels in the reader
+
+- `src/read.c`: `#n=` and `#n#`; the label list in `source`; the patch walk.
+
+Tests: `tests/test_read.c`: `#0=(1 . #0#)` whose cdr is itself;
+`(#0=(1 2) #0#)` sharing one list; `#0=#(1 #0#)`; a label on an atom,
+`(#0="a" #0#)`; nested labels, `#0=(#1=(a . #1#) . #0#)`; labels not
+carrying over to the next datum; each error.  Round trips: each cyclic
+datum Phase 2's tests print reads back `equal?` to it.  The Read syntax
+report updated.
+
+```sh
+cmake --build --preset dev && ctest --preset dev -R 'read|r7rs' && ctest --preset stress -R read
+```
+
+### After the last phase
+
+Sync the docs: `primitives.md` (`equal?` terminates on cycles; the table,
+in Equality and hashing), `repl.md` (datum labels in the reader table; the
+printer's labels; "Cyclic data loops forever" goes), `ports.md` (`write`,
+`write-shared`, `write-simple`), `r7rs-small.md` (`(scheme write)` 4 of 4;
+milestone 9's Cycles done; the conformance table).
+
+```sh
+cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset stress -j 8
+cmake --preset release && cmake --build --preset release
+```
+
+## Open items
+
+### Quoted cyclic literals in code?
+
+R7RS allows circular references in a program's literals, as in
+`'#0=(a . #0#)`.  After Phase 3 the reader reads them, but the expander's
+`%strip` walks a `quote`'s datum recursively, and `define-library` strips
+its whole form, so they loop.  Making `%strip` cycle-safe needs a memo of
+copies across allocations, which the address-keyed table can't hold.
+Provisional: out of scope; reopen if a program needs one.
+
+### How large is `EQUAL_BUDGET`?
+
+Below it, `equal?` costs what it does today; above it, each pair and vector
+costs a table lookup.  Chez's precheck budget is a few hundred.
+Provisional: 1000, set by Phase 1's benchmark; reopen if long acyclic
+lists show the table's cost.
+
+### Should `write` walk every datum first?
+
+The walk costs a table entry per pair and vector on every `write`,
+`display`, and REPL print, cycles or not.  The alternative, printing
+without a walk and restarting with one once the output passes a budget,
+saves the walk on small data but must discard output already written to a
+file.  Provisional: always walk; reopen if Phase 2's benchmark shows a cost
+worth a budget.

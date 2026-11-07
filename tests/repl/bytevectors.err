@@ -8,5 +8,6 @@ error: bytevector-u8-set!: not a byte: 300
 error: bytevector-copy: bad index: 2
 error: bytevector-copy!: bad index: 4
 error: bytevector-append: not a bytevector: #(2)
+error: bytevector-copy!: not a bytevector: x
 error: utf8->string: not a bytevector: "abc"
 error: string->utf8: not a string: #u8(1)

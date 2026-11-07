@@ -138,7 +138,7 @@
 
 (define make-parameter
   (case-lambda
-    ((init) (make-parameter init (lambda (x) x)))
+    ((init) (make-parameter init identity))
     ((init convert)
      (let ((value (convert init)))
        (case-lambda

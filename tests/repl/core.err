@@ -20,5 +20,8 @@ error: bad syntax: (+ 1 . 2)
 error: unexpected )
 error: car: not a pair: 5
 error: arity mismatch: #<procedure void>
+error: arity mismatch: #<procedure first>
+error: procedure-rename: not a closure or primitive: 1
+error: procedure-rename: not a symbol: "x"
 error: arity mismatch: #<procedure f>
 error: arity mismatch: #<procedure read-char>

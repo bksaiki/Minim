@@ -52,3 +52,5 @@
 (char-upcase "a")
 (digit-value 1)
 (char-ci=? #\a 1)
+(char<? #\b #\a 1)
+(char=?)
