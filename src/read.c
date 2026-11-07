@@ -397,53 +397,32 @@ static minim_obj find_label(source *in, intptr_t n) {
     return MINIM_FALSE;
 }
 
-// The pairs and vectors a patch walk has yet to visit, each queued once.
-typedef struct patch_queue {
-    minim_obj *items;
-    size_t len;
-    size_t cap;
-    minim_marks queued;
-} patch_queue;
-
-static void patch_push(patch_queue *q, minim_obj x) {
-    if ((!minim_is_pair(x) && !minim_is_vector(x)) || minim_marks_visit(&q->queued, x, 1) != 0)
-        return;
-    if (q->len == q->cap) {
-        q->cap = q->cap ? 2 * q->cap : 64;
-        q->items = realloc(q->items, q->cap * sizeof(*q->items));
-        if (q->items == NULL)
-            minim_out_of_memory();
-    }
-    q->items[q->len++] = x;
-}
-
 // Replaces `placeholder` by `value` in the pairs and vectors of `x`.
 // Allocates nothing on the heap.
 static void patch(minim_obj x, minim_obj placeholder, minim_obj value) {
-    patch_queue q = {0};
-    patch_push(&q, x);
-    while (q.len > 0) {
-        x = q.items[--q.len];
+    minim_walk w = {0};
+    minim_walk_push(&w, x);
+    while (w.len > 0) {
+        x = w.items[--w.len];
         if (minim_is_pair(x)) {
             if (minim_car(x) == placeholder)
                 minim_set_car(x, value);
             else
-                patch_push(&q, minim_car(x));
+                minim_walk_push(&w, minim_car(x));
             if (minim_cdr(x) == placeholder)
                 minim_set_cdr(x, value);
             else
-                patch_push(&q, minim_cdr(x));
+                minim_walk_push(&w, minim_cdr(x));
         } else {
             for (size_t i = 0; i < minim_vector_length(x); i++) {
                 if (minim_vector_ref(x, i) == placeholder)
                     minim_vector_set(x, i, value);
                 else
-                    patch_push(&q, minim_vector_ref(x, i));
+                    minim_walk_push(&w, minim_vector_ref(x, i));
             }
         }
     }
-    free(q.items);
-    minim_marks_free(&q.queued);
+    minim_walk_free(&w);
 }
 
 // Reads a datum label after its `#`, `c` its first digit: `#n=` and the

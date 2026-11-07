@@ -55,4 +55,22 @@ void minim_marks_set(minim_marks *m, minim_obj x, unsigned mark);
 /** Frees the memory of `m`, leaving it empty. */
 void minim_marks_free(minim_marks *m);
 
+/**
+ * The pairs and vectors a walk over data, perhaps cyclic, has yet to visit,
+ * each queued once, in malloc'd memory; take the next from `items[--len]`.
+ * Valid only while nothing allocates on the heap.  Zero it to start empty.
+ */
+typedef struct minim_walk {
+    minim_obj *items;
+    size_t len;
+    size_t cap;
+    minim_marks queued;
+} minim_walk;
+
+/** Queues `x` in `w` if it is a pair or vector not queued before. */
+void minim_walk_push(minim_walk *w, minim_obj x);
+
+/** Frees the memory of `w`, leaving it empty. */
+void minim_walk_free(minim_walk *w);
+
 #endif

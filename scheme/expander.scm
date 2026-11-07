@@ -130,19 +130,6 @@
          (transformer (and k (%macro k))))
     (if transformer (%expand-head (transformer x env) env) x)))
 
-;; `x` with every alias replaced by its original.  Unchanged parts are shared.
-(define (%strip x)
-  (cond ((symbol? x) (if (%alias-original x) (%strip (%alias-original x)) x))
-        ((pair? x)
-         (let* ((a (%strip (car x)))
-                (d (%strip (cdr x))))
-           (if (and (eq? a (car x)) (eq? d (cdr x))) x (cons a d))))
-        ((vector? x)
-         (let* ((lst (vector->list x))
-                (stripped (%strip lst)))
-           (if (eq? stripped lst) x (list->vector stripped))))
-        (else x)))
-
 (define (%expand-list lst env)
   (map (lambda (x) (%expand-expr x env)) lst))
 

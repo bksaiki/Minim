@@ -257,6 +257,18 @@ still stripped, and one without still `eq?` to what was read.  Measure
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'cycles|syntax-rules|libraries|boot|r7rs'
 ```
 
+**Done.**  `prim_strip` (`src/syntax.c`) as designed: `visit_data` walks
+the pairs and vectors once, `x` first, in an order the data fixes, so the
+second walk, after the originals' vector is allocated, fills it in the
+first's order; copies are allocated next, then a `minim_table` maps each
+original to its index and the copies' fields are filled.  An atom
+argument returns its original, through chains of aliases.  Phase 3's
+patch queue moved to `table.h` as `minim_walk`, which both walks share.
+The Scheme `%strip` went from `expander.scm`; `tools/boot.scm` gets the
+primitive.  `tests/repl/cycles.scm` (new) as planned, plus sharing kept in
+a copy, `(a (#0=(1) #0#))` by `write-shared`.  `bench/run.sh`, 11 runs,
+release: expand 0.236 s median on `main` and here; the rest unchanged.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (`equal?` terminates on cycles; the table,

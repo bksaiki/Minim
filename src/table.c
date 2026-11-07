@@ -111,3 +111,21 @@ void minim_marks_free(minim_marks *m) {
     free(m->slots);
     *m = (minim_marks){0};
 }
+
+void minim_walk_push(minim_walk *w, minim_obj x) {
+    if ((!minim_is_pair(x) && !minim_is_vector(x)) || minim_marks_visit(&w->queued, x, 1) != 0)
+        return;
+    if (w->len == w->cap) {
+        w->cap = w->cap ? 2 * w->cap : 64;
+        w->items = realloc(w->items, w->cap * sizeof(*w->items));
+        if (w->items == NULL)
+            minim_out_of_memory();
+    }
+    w->items[w->len++] = x;
+}
+
+void minim_walk_free(minim_walk *w) {
+    free(w->items);
+    minim_marks_free(&w->queued);
+    *w = (minim_walk){0};
+}
