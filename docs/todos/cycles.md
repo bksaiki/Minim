@@ -222,6 +222,21 @@ report updated.
 cmake --build --preset dev && ctest --preset dev -R 'read|r7rs' && ctest --preset stress -R read
 ```
 
+**Done.**  Phase 2's purpose-built set moved from `print.c` to `table.h`
+as `minim_marks`, beside `minim_table`, which `equal?`'s union-find and
+the printer's label numbers still need: the set holds a mark from 1 to 7,
+not a word.  The patch walk queues each pair and vector once through it.
+`read_datum` roots the label list, an alist-like list of
+`#(n placeholder value referenced?)` vectors, and points the `source` at
+it; the value is MINIM_UNBOUND until read.  The errors: `undefined datum
+label` and `duplicate datum label` with the number; `bad datum label` for
+`#n=#n#` and `#n=` with no datum after it; `bad # syntax` for digits
+followed by anything else; a label past the fixnums, `bad datum label`.
+Tests: `test_read.c`'s `test_labels`, `test_label_round_trips` (each of
+Phase 2's cyclic data, written and read back, `equal?`), and the errors.
+The Read syntax report: 92 passed, 1 failed (`|+NaN.0abc|`, settled in
+`reader-syntax.md`'s review).
+
 ### Phase 4 - Cyclic literals in code
 
 - `src/syntax.c`: `%strip`, as above.

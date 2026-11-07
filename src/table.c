@@ -1,23 +1,24 @@
 /**
  * @file
- * Hash tables from heap objects, by address, to words: open addressing,
- * probing linearly, at most half full.
+ * Hash tables from heap objects, by address: open addressing, probing
+ * linearly, at most half full.
  */
 
 #include "table.h"
 
+#include <assert.h>
 #include <stdlib.h>
 
 #include "heap.h"
 
-// The first slot to probe for `key` in a table of capacity `cap`.
-static size_t home(minim_obj key, size_t cap) {
+// The first slot to probe for the word `key` in a table of capacity `cap`.
+static size_t home(uintptr_t key, size_t cap) {
     return (size_t)(((uint64_t)key * UINT64_C(0x9E3779B97F4A7C15)) >> 32) & (cap - 1);
 }
 
 // The slot of `key` in `t`, or the empty slot where it would go.
 static size_t probe(const minim_table *t, minim_obj key) {
-    size_t i = home(key, t->cap);
+    size_t i = home((uintptr_t)key, t->cap);
     while (t->keys[i] != 0 && t->keys[i] != key)
         i = (i + 1) & (t->cap - 1);
     return i;
@@ -65,4 +66,48 @@ void minim_table_free(minim_table *t) {
     free(t->keys);
     free(t->values);
     *t = (minim_table){0};
+}
+
+static const uintptr_t MARK_MASK = MINIM_TAG_MASK;
+
+// The slot of the object at `addr` in `m`, or the empty one where it would go.
+static uintptr_t *marks_slot(const minim_marks *m, uintptr_t addr) {
+    size_t i = home(addr, m->cap);
+    while (m->slots[i] != 0 && (m->slots[i] & ~MARK_MASK) != addr)
+        i = (i + 1) & (m->cap - 1);
+    return &m->slots[i];
+}
+
+unsigned minim_marks_visit(minim_marks *m, minim_obj x, unsigned mark) {
+    assert(mark >= 1 && mark <= MARK_MASK);
+    if (2 * (m->len + 1) > m->cap) {
+        minim_marks old = *m;
+        m->cap = old.cap ? 2 * old.cap : 64;
+        m->slots = calloc(m->cap, sizeof(*m->slots));
+        if (m->slots == NULL)
+            minim_out_of_memory();
+        for (size_t i = 0; i < old.cap; i++) {
+            if (old.slots[i] != 0)
+                *marks_slot(m, old.slots[i] & ~MARK_MASK) = old.slots[i];
+        }
+        free(old.slots);
+    }
+    uintptr_t addr = x & ~MARK_MASK;
+    uintptr_t *slot = marks_slot(m, addr);
+    if (*slot != 0)
+        return (unsigned)(*slot & MARK_MASK);
+    *slot = addr | mark;
+    m->len++;
+    return 0;
+}
+
+void minim_marks_set(minim_marks *m, minim_obj x, unsigned mark) {
+    assert(mark >= 1 && mark <= MARK_MASK);
+    uintptr_t addr = x & ~MARK_MASK;
+    *marks_slot(m, addr) = addr | mark;
+}
+
+void minim_marks_free(minim_marks *m) {
+    free(m->slots);
+    *m = (minim_marks){0};
 }

@@ -168,63 +168,23 @@ static void walk_push(walk *w, minim_obj x, bool leave) {
     w->len++;
 }
 
-// The pairs and vectors a walk has reached, each in one word: its address,
-// whose low bits alignment leaves clear, holding its state.
-typedef struct seen {
-    uintptr_t *slots;  // 0 for an empty slot
-    size_t len;
-    size_t cap;        // a power of two, or 0
-} seen;
-
 enum { WALKING = 1, WALKED = 2 };
-
-// The slot of the object at `addr` in `s`, or the empty one where it would go.
-static uintptr_t *seen_slot(const seen *s, uintptr_t addr) {
-    size_t i = (size_t)(((uint64_t)addr * UINT64_C(0x9E3779B97F4A7C15)) >> 32) & (s->cap - 1);
-    while (s->slots[i] != 0 && (s->slots[i] & ~(uintptr_t)MINIM_TAG_MASK) != addr)
-        i = (i + 1) & (s->cap - 1);
-    return &s->slots[i];
-}
-
-// The state of `x` in `s`; if 0, `x` is new and is now WALKING.
-static unsigned seen_visit(seen *s, minim_obj x) {
-    if (2 * (s->len + 1) > s->cap) {
-        seen old = *s;
-        s->cap = old.cap ? 2 * old.cap : 64;
-        s->slots = calloc(s->cap, sizeof(*s->slots));
-        if (s->slots == NULL)
-            minim_out_of_memory();
-        for (size_t i = 0; i < old.cap; i++) {
-            if (old.slots[i] != 0)
-                *seen_slot(s, old.slots[i] & ~(uintptr_t)MINIM_TAG_MASK) = old.slots[i];
-        }
-        free(old.slots);
-    }
-    uintptr_t addr = x & ~(uintptr_t)MINIM_TAG_MASK;
-    uintptr_t *slot = seen_slot(s, addr);
-    if (*slot != 0)
-        return (unsigned)(*slot & MINIM_TAG_MASK);
-    *slot = addr | WALKING;
-    s->len++;
-    return 0;
-}
 
 // Records in `out->labels` the pairs and vectors of `x` to label: those
 // reached again while their contents are being walked, which are on cycles,
 // or, if `shared`, every one reached twice.
 static void find_labels(sink *out, minim_obj x, bool shared) {
-    seen seen = {0};
+    minim_marks seen = {0};
     walk w = {0};
     walk_push(&w, x, false);
     while (w.len > 0) {
         w.len--;
         x = w.items[w.len].x;
         if (w.items[w.len].leave) {
-            uintptr_t addr = x & ~(uintptr_t)MINIM_TAG_MASK;
-            *seen_slot(&seen, addr) = addr | WALKED;
+            minim_marks_set(&seen, x, WALKED);
             continue;
         }
-        unsigned state = seen_visit(&seen, x);
+        unsigned state = minim_marks_visit(&seen, x, WALKING);
         if (state != 0) {
             if (shared || state == WALKING)
                 minim_table_add(&out->labels, x);
@@ -240,7 +200,7 @@ static void find_labels(sink *out, minim_obj x, bool shared) {
         }
     }
     free(w.items);
-    free(seen.slots);
+    minim_marks_free(&seen);
 }
 
 static bool is_labeled(const sink *out, minim_obj x) {
