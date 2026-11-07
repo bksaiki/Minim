@@ -93,7 +93,9 @@
 
 (%define-with-port (write x) current-output-port %write)
 
-(%define-with-port (write-simple x) current-output-port %write)
+(%define-with-port (write-shared x) current-output-port %write-shared)
+
+(%define-with-port (write-simple x) current-output-port %write-simple)
 
 (%define-with-port (display x) current-output-port %display)
 

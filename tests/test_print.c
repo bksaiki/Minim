@@ -280,6 +280,21 @@ static minim_obj port_writes_like_file(const char *src) {
     MINIM_RETURN(ok ? MINIM_TRUE : MINIM_FALSE);
 }
 
+// `write` labels the pairs and vectors on cycles, numbered in print order, and
+// nothing else.
+static void test_labels(void) {
+    CHECK(evals_to("(let ((c (list 1 2))) (set-cdr! (cdr c) c) c)", "#0=(1 2 . #0#)"));
+    CHECK(evals_to("(let ((p (list #f))) (set-car! p p) p)", "#0=(#0#)"));
+    CHECK(evals_to("(let ((v (vector 1 #f))) (vector-set! v 1 v) v)", "#0=#(1 #0#)"));
+    CHECK(evals_to("(let ((c (list 1 2))) (set-cdr! (cdr c) (cdr c)) c)", "(1 . #0=(2 . #0#))"));
+    CHECK(evals_to("(let ((x (list 1 2))) (list x x))", "((1 2) (1 2))"));
+    CHECK(evals_to("(let ((a (list 1)) (v (vector 2 #f)))"
+                   "  (set-cdr! a a) (vector-set! v 1 v) (list a v))",
+                   "(#0=(1 . #0#) #1=#(2 #1#))"));
+    CHECK(evals_to("(let ((q (list 'quote 1))) (set-cdr! (cdr q) (cdr q)) q)",
+                   "(quote . #0=(1 . #0#))"));
+}
+
 // Writing to a string port matches writing to a file, even when growing its
 // buffer collects.
 static void test_port(void) {
@@ -288,6 +303,7 @@ static void test_port(void) {
         "(make-string 1000 #\\\u03bb)",
         "(let loop ((i 0) (l '())) (if (= i 300) l (loop (+ i 1) (cons (vector i) l))))",
         "(list car (open-output-string) (eof-object))",
+        "(let ((c (list 1 2))) (set-cdr! (cdr c) c) (list c c))",
     };
     for (size_t i = 0; i < sizeof(srcs) / sizeof(srcs[0]); i++)
         CHECK_EQ(port_writes_like_file(srcs[i]), MINIM_TRUE);
@@ -307,6 +323,7 @@ int main(void) {
     test_bytevectors();
     test_procedures();
     test_records();
+    test_labels();
     test_port();
     minim_shutdown();
     return test_result();

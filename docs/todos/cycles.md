@@ -184,6 +184,29 @@ tree to a string port) against `main`.  The 6.13 report updated.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'print|ports|write|r7rs'
 ```
 
+**Done.**  `find_labels` walks with an explicit stack of entries, each
+entered and then left once its contents are walked, so an object is
+WALKING until then: one reached while WALKING is a back edge's target.
+Every cycle has a back edge, so printing always meets a label, and a
+`#n#` never precedes its `#n=`.  Labels live in the sink, in a
+`minim_table` (0, then the label + 1); `print` writes a pair's or
+vector's label first, the cdr loop stops at a labeled tail, and
+`abbreviation` refuses a labeled second pair, so `(quote . #0=(1 . #0#))`.
+`print_labeled` frees the table after printing.  `run.scm`'s skip of the
+cyclic `write` test went, its list now empty.  Tests:
+`tests/test_print.c`'s `test_labels`, and a cyclic datum in `test_port`;
+`tests/repl/write.scm` (new).  The 6.13 report: 63 passed, 0 failed.
+
+The walk's own table is purpose-built (`seen` in `print.c`): one word per
+object, its untagged address with the state in the low bits, which 16-byte
+alignment leaves clear.  `bench/write.scm` (new; 10 writes each of a
+100,000-element list and a 65,535-pair tree to string ports), release,
+best of 5, against `main` at 0.147 s, with the data built alone in
+0.074: `minim_table` for the walk, 0.238 s, printing 2.2 times `main`'s;
+probing once per new object, 0.23; `seen`, 0.18, printing 1.4 times.
+`bench/run.sh`, 11 runs: write 0.154 to 0.200 s median; the rest
+unchanged.
+
 ### Phase 3 - Datum labels in the reader
 
 - `src/read.c`: `#n=` and `#n#`; the label list in `source`; the patch walk.

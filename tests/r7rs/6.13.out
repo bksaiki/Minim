@@ -1,3 +1,1 @@
-SKIP 2142 "writes a cyclic list, which loops: no datum labels"
-FAIL 2165 (and (member (let ((out (open-output-string)) (x (list 1 2 3))) (write-shared (list x x) out) (get-output-string out)) '("(#0=(1 2 3) #0#)" "(#1=(1 2 3) #1#)")) #t) raised ("unbound variable" write-shared)
-6.13 Input and output: 61 passed, 1 failed, 0 errors
+6.13 Input and output: 63 passed, 0 failed, 0 errors

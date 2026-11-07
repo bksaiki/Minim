@@ -149,6 +149,7 @@ minim_add_repl_test(time)
 minim_add_repl_test(top-level)
 minim_add_repl_test(values)
 minim_add_repl_test(vectors)
+minim_add_repl_test(write)
 
 minim_add_script_test(fail STATUS 1)
 minim_add_script_test(binary-files ARGS binary-files.scm

@@ -56,7 +56,7 @@
 (%define-system-library '(scheme read) '(read))
 (%define-system-library '(scheme repl) '(interaction-environment))
 (%define-system-library '(scheme time) '(current-jiffy current-second jiffies-per-second))
-(%define-system-library '(scheme write) '(display write write-simple))
+(%define-system-library '(scheme write) '(display write write-shared write-simple))
 
 ;; R5RS's names (R7RS Appendix A), with the auxiliary syntax R7RS's list omits.
 (%define-system-library

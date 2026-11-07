@@ -407,6 +407,20 @@ static minim_obj prim_write(minim_obj *args, size_t n) {
     return MINIM_VOID;
 }
 
+static minim_obj prim_write_shared(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check_open(args[1], MINIM_PORT_OUTPUT, false, "write-shared: not an open textual output port");
+    minim_port_write_shared(args[1], args[0]);
+    return MINIM_VOID;
+}
+
+static minim_obj prim_write_simple(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    check_open(args[1], MINIM_PORT_OUTPUT, false, "write-simple: not an open textual output port");
+    minim_port_write_simple(args[1], args[0]);
+    return MINIM_VOID;
+}
+
 static minim_obj prim_display(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
     check_open(args[1], MINIM_PORT_OUTPUT, false, "display: not an open textual output port");
@@ -534,6 +548,8 @@ const minim_prim_def minim_port_prims[] = {
     {"%flush-output-port", prim_flush_output_port, 1, 1},
     {"get-output-string", prim_get_output_string, 1, 1},
     {"%write", prim_write, 2, 2},
+    {"%write-shared", prim_write_shared, 2, 2},
+    {"%write-simple", prim_write_simple, 2, 2},
     {"%display", prim_display, 2, 2},
     {"open-input-bytevector", prim_open_input_bytevector, 1, 1},
     {"open-output-bytevector", prim_open_output_bytevector, 0, 0},
