@@ -503,12 +503,6 @@
 (define (%define-macro! name spec)
   (%top-define-macro! %system-env name spec))
 
-(define (%expand-define-syntax x top)
-  (if (%binding-form? x)
-      (%top-define-macro! top (cadr x) (caddr x))
-      (%bad-syntax x))
-  '(begin))
-
 ;; The core forms of the top-level forms `forms`, in the top-level environment
 ;; `top`: every definition is bound before any form is expanded, so one may
 ;; refer to one further down.  The definitions and expressions run in order.
@@ -539,7 +533,9 @@
                                                      (%expand-expr (caddr x) top)))
                                     items)))
                  (%bad-syntax x)))
-            ((define-syntax) (%expand-define-syntax x top) (scan rest items))
+            ((define-syntax)
+             (if (%binding-form? x) (%top-define-macro! top (cadr x) (caddr x)) (%bad-syntax x))
+             (scan rest items))
             ((import) (%import! top (cdr x)) (scan rest items))
             ((define-library)
              (let ((code (%expand-define-library x)))
