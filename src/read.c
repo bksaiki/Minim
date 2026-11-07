@@ -60,7 +60,8 @@ static bool is_whitespace(int32_t c) {
 }
 
 static bool is_delimiter(int32_t c) {
-    return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';';
+    return c < 0 || is_whitespace(c) || c == '(' || c == ')' || c == '"' || c == ';'
+           || c == '|';
 }
 
 // Where the reader reads from: a port, through a reference its caller roots,
@@ -177,14 +178,16 @@ static void skip_continuation(source *in, int32_t c) {
     unread(in, c);
 }
 
-static minim_obj read_string(source *in) {
+// Reads into the token up to the unescaped `close`, a string's or a `|...|`
+// symbol's, with the string escapes; raises `eof_msg` at the end of input.
+static void read_quoted(source *in, int32_t close, const char *eof_msg) {
     token.len = 0;
     for (;;) {
         int32_t c = next(in);
         if (c < 0)
-            read_error("eof in string", MINIM_VOID);
-        if (c == '"')
-            return token_string();
+            read_error(eof_msg, MINIM_VOID);
+        if (c == close)
+            return;
         if (c != '\\') {
             token_push((uint32_t)c);
             continue;
@@ -398,7 +401,12 @@ static int read_item_from(source *in, int32_t c, minim_obj *x) {
         *x = read_list(in);
         return ITEM;
     case '"':
-        *x = read_string(in);
+        read_quoted(in, '"', "eof in string");
+        *x = token_string();
+        return ITEM;
+    case '|':
+        read_quoted(in, '|', "eof in symbol");
+        *x = minim_intern(token_string());
         return ITEM;
     case '#':
         c = next(in);

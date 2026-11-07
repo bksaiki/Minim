@@ -52,7 +52,7 @@ read back as it:
 
 - the empty name, or `.`;
 - a name that parses as a number (`minim_parse_number`): `|1|`, `|+3|`,
-  `|-.4|`;
+  `|-.4|`; and `+i` and `-i`, which R7RS excludes from identifiers;
 - a delimiter or whitespace anywhere, or a `|` or `\`;
 - `#`, `'`, `` ` ``, or `,` first;
 - a control character anywhere.
@@ -86,6 +86,17 @@ symbol`.  The Read syntax report updated.
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'read|r7rs'
 ```
+
+**Done.**  `read_string` became `read_quoted(in, close, eof_msg)`, filling
+the token; `"` makes a string of it and `|` interns it.  `test_read.c`
+compares `|...|` symbols by identity (`reads_symbol_named`), so Phase 2's
+printing doesn't touch them.  `#| |# |# 8`, which read the stray `|#` as a
+symbol, now raises `eof in symbol`: the `|` opens one.  The Read syntax
+report went from 85 passed, 6 failed, 2 errors to 72, 21, 0: `|a b|` used
+to break the reading of the `test-write-syntax` block, which counted as
+one error; now its 17 tests run and fail on the printer, Phase 2's work.
+Among them, `|+i|`, `|-i|`, and `|+NaN.0abc|` aren't numbers to
+`minim_parse_number`, so the bar test as designed won't cover them.
 
 ### Phase 2 - Writing symbols readably
 
@@ -146,3 +157,11 @@ R7RS says fold-case folds "identifiers", which a `|...|` symbol is, but the
 bars are a way to write a name exactly.  Provisional: not folded, as
 strings aren't; reopen if another implementation's behavior or a test says
 otherwise.
+
+## Settled in review
+
+- Names that only look like numbers: `+i` and `-i` are barred, as R7RS
+  excludes them from identifiers; `+NaN.0abc`, a valid identifier that
+  Chibi's tests bar only to be safe, is written bare and its test left
+  failing.  Reopen if the bar test grows a general "starts like a number"
+  rule.

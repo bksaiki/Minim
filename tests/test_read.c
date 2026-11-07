@@ -112,6 +112,19 @@ static void test_numbers(void) {
         CHECK(reads_symbol(symbols[i]));
 }
 
+// Whether the first datum in `s`, read from a port and from a C string, is the
+// symbol named `name`.
+static bool reads_symbol_named(const char *s, const char *name) {
+    minim_obj sym = minim_intern_cstr(name);
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&sym, &x);
+    x = minim_read(input(s));
+    bool ok = x == sym;
+    const char *p = s;
+    x = minim_read_string(&p);
+    MINIM_RETURN(ok && x == sym);
+}
+
 static void test_symbols(void) {
     CHECK(reads_as("foo", "foo"));
     CHECK(reads_as("Foo", "Foo"));
@@ -120,6 +133,38 @@ static void test_symbols(void) {
     CHECK(reads_as("-", "-"));
     CHECK(reads_as("...", "..."));
     CHECK(reads_as("-x", "-x"));
+
+    // `|...|` names a symbol exactly, with the string escapes.
+    CHECK(reads_symbol_named("|foo|", "foo"));
+    CHECK(reads_symbol_named("|a b|", "a b"));
+    CHECK(reads_symbol_named("||", ""));
+    CHECK(reads_symbol_named("|H\\x65;llo|", "Hello"));
+    CHECK(reads_symbol_named("|a\\|b|", "a|b"));
+    CHECK(reads_symbol_named("|a\\\\b|", "a\\b"));
+    CHECK(reads_symbol_named("|1|", "1"));
+    CHECK(reads_symbol_named("|.|", "."));
+    CHECK(reads_as("(|a|)", "(a)"));
+}
+
+// `|` is a delimiter, so `a|b|c` is three symbols.
+static void test_bar_delimits(void) {
+    minim_obj port = input("a|b|c");
+    minim_obj a = MINIM_NIL;
+    minim_obj b = MINIM_NIL;
+    minim_obj c = MINIM_NIL;
+    minim_obj x = MINIM_NIL;
+    MINIM_FRAME(&port, &a, &b, &c, &x);
+    a = minim_intern_cstr("a");
+    b = minim_intern_cstr("b");
+    c = minim_intern_cstr("c");
+    x = minim_read(port);
+    CHECK_EQ(x, a);
+    x = minim_read(port);
+    CHECK_EQ(x, b);
+    x = minim_read(port);
+    CHECK_EQ(x, c);
+    CHECK_EQ(minim_read(port), MINIM_EOF);
+    MINIM_RETURN_VOID;
 }
 
 static void test_strings(void) {
@@ -222,7 +267,7 @@ static void test_comments(void) {
     CHECK(reads_as("(1 #||#)", "(1)"));
     CHECK(reads_as("#| a #| nested |# b |# 6", "6"));
     CHECK(reads_as("#|\nline\n|# 7", "7"));
-    CHECK(reads_as("#| |# |# 8", "|#"));
+    CHECK(read_fails_with("#| |# |# 8", "eof in symbol"));
     CHECK(reads_as("\"#|\"", "\"#|\""));
     CHECK(read_fails_with("#| open", "eof in comment"));
     CHECK(read_fails_with("#| #| |#", "eof in comment"));
@@ -247,6 +292,7 @@ static void test_errors(void) {
     CHECK(read_fails_with("#u8 (1)", "bad # syntax"));
     CHECK(read_fails_with("#u9(1)", "bad # syntax"));
     CHECK(read_fails_with("\"abc", "eof in string"));
+    CHECK(read_fails_with("|abc", "eof in symbol"));
     CHECK(read_fails_with("\"\\q\"", "bad string escape"));
     CHECK(read_fails_with("\"\\xZZ;\"", "bad string escape"));
     CHECK(read_fails_with("#q", "bad # syntax"));
@@ -273,6 +319,7 @@ int main(void) {
     test_atoms();
     test_numbers();
     test_symbols();
+    test_bar_delimits();
     test_strings();
     test_continuations();
     test_chars();

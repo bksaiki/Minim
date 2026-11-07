@@ -1,9 +1,22 @@
 FAIL 2194 (cadr (read (open-input-string "#0=(1 . #0#)"))) raised ("bad # syntax" "#0=")
 FAIL 2195 (cadr (read (open-input-string "(#0=(1 2 3) #0#)"))) raised ("bad # syntax" "#0=")
-FAIL 2211 (read (open-input-string "|H\\x65;llo|")) => |H\x65
 FAIL 2213 (read (open-input-string "#!fold-case ABC")) raised ("bad # syntax" "#!fold-case")
 FAIL 2214 (read (open-input-string "#!fold-case #!no-fold-case ABC")) raised ("bad # syntax" "#!fold-case")
-ERROR 2280 ("bad syntax" (test-write-syntax "|a b|" '|a b|))
-READ-ERROR 2282 ("eof in string")
-FAIL 2286 (get-output-string out) => "|a|"
-Read syntax: 85 passed, 6 failed, 2 errors
+FAIL 2279 (get-output-string out) => "."
+FAIL 2280 (get-output-string out) => "a b"
+FAIL 2281 (get-output-string out) => ",a"
+FAIL 2282 (get-output-string out) => "\""
+FAIL 2283 (get-output-string out) => "|"
+FAIL 2284 (get-output-string out) => ""
+FAIL 2285 (get-output-string out) => "\\123"
+FAIL 2288 (get-output-string out) => "2"
+FAIL 2289 (get-output-string out) => "+3"
+FAIL 2290 (get-output-string out) => "-.4"
+FAIL 2291 (get-output-string out) => "+i"
+FAIL 2292 (get-output-string out) => "-i"
+FAIL 2293 (get-output-string out) => "+inf.0"
+FAIL 2294 (get-output-string out) => "-inf.0"
+FAIL 2295 (get-output-string out) => "+nan.0"
+FAIL 2296 (get-output-string out) => "+NaN.0"
+FAIL 2297 (get-output-string out) => "+NaN.0abc"
+Read syntax: 72 passed, 21 failed, 0 errors
