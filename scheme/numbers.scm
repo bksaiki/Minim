@@ -23,7 +23,7 @@
 
 (define (finite? z)
   (%check number? z "finite?: not a number")
-  (not (or (= z +inf.0) (= z -inf.0) (not (= z z)))))
+  (not (or (infinite? z) (nan? z))))
 
 ;; Whether the integer `n` is odd; raises `msg` unless it is an integer.  An
 ;; inexact `n` is odd if `n / 2` isn't integral, which holds past 2^53, where

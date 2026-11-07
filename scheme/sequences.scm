@@ -138,8 +138,8 @@
             ((char>? (string-ref a i) (string-ref b i)) 1)
             (else (loop (+ i 1)))))))
 
-;; Whether `cmp` holds of the order of each adjacent pair of the strings
-;; `ss` and 0, each string first mapped by `key`; raises `msg` on a non-string.
+;; Whether `(cmp (%string-order a b) 0)` for each adjacent pair `a`, `b` of
+;; `ss`, mapped by `key`; raises `msg` on a non-string.
 (define (%compare-strings key cmp msg ss)
   (%compare string? key (lambda (a b) (cmp (%string-order a b) 0)) msg ss))
 
