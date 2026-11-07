@@ -69,7 +69,7 @@ special form even where the user has bound `if`.
 |---|---|
 | identifier | its resolution; `bad syntax` if that is a macro |
 | constant | itself, with aliases stripped from vectors |
-| `(quote d)` | `d` with every alias replaced by its original |
+| `(quote d)` | `d` with every alias replaced by its original (`%strip`), so cyclic literals work |
 | `(quasiquote t)` | code building `t`; see below |
 | `(lambda params body ...)` | fresh names for `params`, then the body in a new frame |
 | `(case-lambda (params body ...) ...)` | each clause as `lambda`'s parameters and body |

@@ -45,6 +45,17 @@ pointers (`minim_prim_apply`, ...) and never calls them:
 - `equal?` walks pairs and vectors with an explicit stack, never C
   recursion, so arbitrarily deep structure is fine.  The stack is on the C
   stack until it outgrows 64 entries.
+- `equal?` terminates on cyclic data, after Adams and Dybvig, as Chez: it
+  alternates between comparing 1000 pairs and vectors untracked and tracking
+  them in a union-find of those assumed equal, until 40 in a row are new
+  assumptions.  A pair of them already assumed equal is skipped, which is
+  sound, since if they differ the comparison fails anyway.  New assumptions
+  are finite, so the untracked phases are too.
+- Walks over data that may be cyclic use `src/table.h`, in malloc'd memory
+  and keyed by address, so valid only while nothing allocates on the heap:
+  `minim_table`, from objects to words; `minim_marks`, a set of objects
+  with a 3-bit mark, one word each, the mark in the address's low bits; and
+  `minim_walk`, a queue visiting each pair and vector once.
 - A hash must agree with its equality, so `equal-hash` mirrors `equal?`:
   equal values visit the same values in the same order.  Its 64-value budget
   makes it O(1) and terminating on cyclic data.
@@ -158,7 +169,7 @@ through `%record-ref`, but only `%make-record-type` sets them.
 |---|---|
 | `(eq? a b)` | whether `a` and `b` are the same object |
 | `(eqv? a b)` | same as `eq?`, except that flonums with the same bits are `eqv?`: `(eqv? 0.0 -0.0)` is `#f` |
-| `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else, records included, by `eqv?`.  Cyclic data loops forever |
+| `(equal? a b)` | whether `a` and `b` have the same structure: pairs, vectors, and strings compared element by element, everything else, records included, by `eqv?`; cyclic data included |
 | `(equal-hash x)` | a non-negative fixnum, equal for `equal?` values, hashing flonums' bits.  Visits at most 64 values of `x`, so it terminates on cyclic data.  Closures, continuations, error objects, and records all hash alike |
 | `(not x)` | whether `x` is `#f` |
 | `(symbol? x)`, `(procedure? x)`, `(boolean? x)` | whether `x` is of that type |
@@ -215,6 +226,7 @@ For the macro expander in the prelude; the `%` marks them internal.
 |---|---|
 | `(%make-alias id env)` | a new alias: an uninterned symbol named like the symbol `id`, recording `id` and `env` |
 | `(%alias-original x)`, `(%alias-env x)` | the `id` or `env` an alias was made with; `#f` if `x` isn't an alias |
+| `(%strip x)` | `x` with every alias replaced by its original: `x` itself if it holds none, else a copy of its pairs and vectors, cycles and sharing included |
 | `(%bound? sym)` | whether the global `sym` holds a value; `#f` for an alias |
 | `(%getprop sym key default)` | the property `key` of `sym`, keys compared by `eq?`, or `default` |
 | `(%putprop! sym key value)` | sets the property `key` of `sym`; void |
