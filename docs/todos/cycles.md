@@ -101,6 +101,27 @@ Errors, as read errors: `#n#` of an undefined label, `#n=#n#` (the
 placeholder itself), a label defined twice in one datum (as Chez), and `#`
 with digits then anything else.
 
+**Cyclic literals in code** (R7RS 2.4 allows `'#0=(a . #0#)`).  The
+evaluator returns a `quote`'s datum without walking it, but the expander's
+`%strip`, which replaces aliases by their originals in a `quote`'s datum
+and in a `define-library` form, recurses.  It becomes a primitive in
+`src/syntax.c`, cycle-safe through the table:
+
+- A first walk, allocating nothing, visits each pair and vector once and
+  looks for an alias.  With none, the datum is returned as is, cyclic or
+  not: the common case, a literal as the reader made it.
+- Otherwise every pair and vector reached is copied, cycles included, each
+  alias replaced by its original (through chains of aliases).  Copying
+  allocates, which moves objects, so it goes in steps: count the objects;
+  allocate a vector and fill it with them by walking again; allocate a
+  copy of each into a second vector; only then key the table by the
+  originals, which no longer move, and fill each copy's fields: an alias's
+  original, another object's copy, or the field itself.
+
+Unchanged parts aren't shared with the original once an alias is found,
+which `quote` doesn't promise anyway.  Out of scope: a cyclic literal in a
+`syntax-rules` template, which template instantiation walks.
+
 ## Phases
 
 ### Phase 1 - The object table, and `equal?` on cycles
@@ -122,6 +143,21 @@ against `main`.
 ```sh
 cmake --build --preset dev && ctest --preset dev -R 'equality|r7rs' && ctest --preset stress -R equality
 ```
+
+**Done.**  The one switch at `EQUAL_BUDGET` was measured and dropped:
+past it, every pair cost table lookups, and `bench/equal.scm` went from
+0.16 s on `main` to 0.47 s.  `is_equal` now interleaves as Adams and
+Dybvig's algorithm and Chez do: `EQUAL_FAST` (1000) pairs and vectors
+compared untracked, then tracked in the union-find until `EQUAL_SLOW` (40)
+in a row are new assumptions; one already assumed equal is skipped and
+restarts that count.  New assumptions are finite, so the untracked phases
+are too, and it terminates; acyclic data pays the table on about 4% of its
+pairs.  Unlike Chez, the untracked phases have a fixed length, not a
+random one, which termination doesn't need.  `bench/equal.scm`, 11 runs,
+release: 0.157 s median on `main`, 0.166 here, minimum 0.154 and 0.157;
+the rest of the suite unchanged.  `tests/repl/equality.scm` gained the
+cases above and a pair whose car and cdr are both itself, which branches
+at every step.
 
 ### Phase 2 - Labels in `write`, `display`, and `write-shared`
 
@@ -163,6 +199,26 @@ report updated.
 cmake --build --preset dev && ctest --preset dev -R 'read|r7rs' && ctest --preset stress -R read
 ```
 
+### Phase 4 - Cyclic literals in code
+
+- `src/syntax.c`: `%strip`, as above.
+- `scheme/expander.scm`: the Scheme `%strip` out.  `scheme/prelude.boot`
+  regenerated.
+
+Last, because its tests read cyclic literals (Phase 3) and print them
+(Phase 2).
+
+Tests: `tests/repl/cycles.scm` (new): `'#0=(a . #0#)` and `'#0=#(1 #0#)`
+evaluating to themselves, printed with labels; a macro quoting an alias
+beside a cyclic argument, `(q #0=(1 . #0#))` as `(a #0=(1 . #0#))`; a
+cyclic literal in a `define-library` body; a quoted datum with an alias
+still stripped, and one without still `eq?` to what was read.  Measure
+`bench/run.sh`'s expansion benchmark against `main`.
+
+```sh
+cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'cycles|syntax-rules|libraries|boot|r7rs'
+```
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (`equal?` terminates on cycles; the table,
@@ -178,27 +234,13 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### Quoted cyclic literals in code?
+None; see Settled in review.
 
-R7RS allows circular references in a program's literals, as in
-`'#0=(a . #0#)`.  After Phase 3 the reader reads them, but the expander's
-`%strip` walks a `quote`'s datum recursively, and `define-library` strips
-its whole form, so they loop.  Making `%strip` cycle-safe needs a memo of
-copies across allocations, which the address-keyed table can't hold.
-Provisional: out of scope; reopen if a program needs one.
+## Settled in review
 
-### How large is `EQUAL_BUDGET`?
-
-Below it, `equal?` costs what it does today; above it, each pair and vector
-costs a table lookup.  Chez's precheck budget is a few hundred.
-Provisional: 1000, set by Phase 1's benchmark; reopen if long acyclic
-lists show the table's cost.
-
-### Should `write` walk every datum first?
-
-The walk costs a table entry per pair and vector on every `write`,
-`display`, and REPL print, cycles or not.  The alternative, printing
-without a walk and restarting with one once the output passes a budget,
-saves the walk on small data but must discard output already written to a
-file.  Provisional: always walk; reopen if Phase 2's benchmark shows a cost
-worth a budget.
+- Cyclic literals in code are in scope: Phase 4.
+- `EQUAL_BUDGET` starts at 1000, confirmed or tuned by Phase 1's
+  benchmark.  Chez's precheck budget is a few hundred.  (Phase 1 replaced
+  it with Adams and Dybvig's interleaving; see there.)
+- `write` always walks a pair or vector datum first; reopen if Phase 2's
+  benchmark shows a cost worth printing optimistically up to a budget.

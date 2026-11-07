@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "heap.h"
+#include "table.h"
 
 static minim_obj prim_eq(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
@@ -61,22 +62,71 @@ static void pending_push(pending *p, minim_obj a, minim_obj b) {
     p->items[p->len++] = b;
 }
 
+// `equal?` alternates between comparing EQUAL_FAST pairs and vectors
+// untracked and tracking them, in a union-find of those assumed equal, until
+// EQUAL_SLOW in a row are new assumptions.
+enum { EQUAL_FAST = 1000, EQUAL_SLOW = 40 };
+
+// The representative of the class of `x` in the union-find `t`, whose values
+// are each object's parent, or 0 for a representative; adds `x` if new.
+static minim_obj class_of(minim_table *t, minim_obj x) {
+    uintptr_t *slot = minim_table_add(t, x);
+    while (*slot != 0) {
+        uintptr_t grandparent = *minim_table_find(t, (minim_obj)*slot);
+        if (grandparent != 0)
+            *slot = grandparent;  // path halving
+        x = (minim_obj)*slot;
+        slot = minim_table_find(t, x);
+    }
+    return x;
+}
+
+// Whether `a` and `b` are already assumed equal; if not, assumes they are.
+static bool assumed_equal(minim_table *t, minim_obj a, minim_obj b) {
+    minim_obj ra = class_of(t, a);
+    minim_obj rb = class_of(t, b);
+    if (ra == rb)
+        return true;
+    *minim_table_find(t, ra) = (uintptr_t)rb;
+    return false;
+}
+
 // Compares with an explicit stack, so deep structure can't overflow the C
-// stack.  Nothing here allocates on the heap, so queued values stay valid,
-// and nothing raises, so the stack is always freed.
+// stack.  While tracking, a pair of pairs or vectors already assumed equal is
+// skipped, after Adams and Dybvig: sound, since if they differ the comparison
+// fails anyway.  It terminates: each return to the untracked phase takes
+// EQUAL_SLOW new assumptions, of which there are finitely many.  Nothing here
+// allocates on the heap, so queued values and the table stay valid, and
+// nothing raises, so both are always freed.
 static bool is_equal(minim_obj a, minim_obj b) {
     pending p = {.cap = sizeof(p.small) / sizeof(p.small[0])};
     p.items = p.small;
     pending_push(&p, a, b);
+    minim_table assumed = {0};
+    int fast = EQUAL_FAST;  // untracked comparisons left; 0 while tracking
+    int slow = 0;           // new assumptions in a row
 
     bool result = true;
     while (result && p.len > 0) {
         b = p.items[--p.len];
         a = p.items[--p.len];
-        if (minim_is_pair(a) && minim_is_pair(b)) {
+        bool pairs = minim_is_pair(a) && minim_is_pair(b);
+        bool vectors = !pairs && minim_is_vector(a) && minim_is_vector(b);
+        if (pairs || vectors) {
+            if (fast > 0) {
+                fast--;
+            } else if (assumed_equal(&assumed, a, b)) {
+                slow = 0;
+                continue;
+            } else if (++slow == EQUAL_SLOW) {
+                slow = 0;
+                fast = EQUAL_FAST;
+            }
+        }
+        if (pairs) {
             pending_push(&p, minim_cdr(a), minim_cdr(b));
             pending_push(&p, minim_car(a), minim_car(b));
-        } else if (minim_is_vector(a) && minim_is_vector(b)) {
+        } else if (vectors) {
             result = minim_vector_length(a) == minim_vector_length(b);
             for (size_t i = 0; result && i < minim_vector_length(a); i++)
                 pending_push(&p, minim_vector_ref(a, i), minim_vector_ref(b, i));
@@ -93,6 +143,7 @@ static bool is_equal(minim_obj a, minim_obj b) {
 
     if (p.items != p.small)
         free(p.items);
+    minim_table_free(&assumed);
     return result;
 }
 

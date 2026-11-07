@@ -72,6 +72,7 @@ add_library(libminim STATIC
     src/string.c
     src/symbol.c
     src/syntax.c
+    src/table.c
     src/system.c
     src/unicode.c
     src/vector.c
