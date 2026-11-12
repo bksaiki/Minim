@@ -96,6 +96,11 @@ bump
 (import (lib wrong))
 (import (lib bad-include))
 
+; A library file's include-library-declarations and include-ci, relative to
+; its directory.
+(import (lib folded))
+(shout 2)
+
 ; (scheme r5rs): R5RS's names from several R7RS libraries, and its syntax;
 ; R7RS additions like `when` and `error` are unbound in it.
 (define-library (old-style)

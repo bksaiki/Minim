@@ -2,3 +2,4 @@ error: bad syntax: (nand a b)
 error: bad syntax: (not a b)
 error: bad syntax: (else 1)
 error: cond-expand: no matching clause: (cond-expand (no-such 1))
+error: include: cannot open file: "lib/missing.scm"

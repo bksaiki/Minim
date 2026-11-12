@@ -156,6 +156,16 @@ with `include-ci` and with `include-library-declarations` of an
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'cond-expand|libraries|r7rs'
 ```
 
+**Done.**  `minim_read_file` takes `fold`, setting the port's flag before
+reading; `load` and `boot_gen` pass false.  `%read-file`'s second argument
+is optional.  `%include` takes the caller's name for its error,
+`include-ci: cannot open file` and so on, and `fold?`.  The transformers
+come from `%include-transformer`, which strips the form, its file names
+being data, and returns the system's `begin` around the files' forms.
+Tests: `tests/repl/lib/defs.scm`, `upper.scm` (shared by `cond-expand.scm`
+and the library), `folded-decls.scm`, and `folded.sld`; the cases as
+planned.  No R7RS report changed.
+
 ### After the last phase
 
 Sync the docs: `macros.md` (transformers written in Scheme; `cond-expand`

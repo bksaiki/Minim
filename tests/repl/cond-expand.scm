@@ -44,3 +44,11 @@ which
 (cond-expand ((not a b) 1))
 (cond-expand (else 1) (minim 2))
 (cond-expand (no-such 1))
+
+; include: a file's forms, spliced, relative to the current directory.
+(include "lib/defs.scm")
+(included-twice included)
+((lambda () (include "lib/defs.scm") (+ included 10)))
+(include-ci "lib/upper.scm")
+(shout 1)
+(include "lib/missing.scm")

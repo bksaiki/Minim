@@ -77,13 +77,14 @@
   (cond ((assoc name %libraries) => cdr)
         (else (%syntax-error "import: unknown library" (list name)))))
 
-;; The forms of the files `files`, relative to the library file's directory.
-(define (%include files)
+;; The forms of the files `files`, relative to the library file's directory,
+;; read as if after `#!fold-case` if `fold?`; `who` names the caller in errors.
+(define (%include who files fold?)
   (%append-map (lambda (file)
                  (let ((path (if (string? file) (%join %library-dir file) (%bad-syntax file))))
                    (if (file-exists? path)
-                       (%read-file path)
-                       (%syntax-error "include: cannot open file" (list path)))))
+                       (%read-file path fold?)
+                       (%syntax-error (string-append who ": cannot open file") (list path)))))
                files))
 
 ;; The (name . binding) pairs the stripped import set `set` names.
@@ -184,6 +185,19 @@
             (lambda (form env)
               (cons (%make-alias 'begin %system-env) (%cond-expand-clause form))))
 
+;; The transformer of `(include file ...)`, or of `(include-ci file ...)` if
+;; `fold?` (R7RS 4.1.7): the files' forms in the system's `begin`, which
+;; splices definitions.
+(define (%include-transformer who fold?)
+  (lambda (form env)
+    (let ((x (%strip form)))
+      (cons (%make-alias 'begin %system-env)
+            (%include who (if (%length x 0) (cdr x) (%bad-syntax x)) fold?)))))
+
+(%top-bind! %system-env 'include (%include-transformer "include" #f))
+
+(%top-bind! %system-env 'include-ci (%include-transformer "include-ci" #t))
+
 ;; The (external name . binding) an export spec of the library environment `top`
 ;; denotes: `name`, or `(rename name external)`.
 (define (%export spec top)
@@ -209,7 +223,13 @@
               ((export) (loop (cdr decls) (append specs (cdr d)) body))
               ((import) (%import! top (cdr d)) (loop (cdr decls) specs body))
               ((begin) (loop (cdr decls) specs (append body (cdr d))))
-              ((include) (loop (cdr decls) specs (append body (%include (cdr d)))))
+              ((include) (loop (cdr decls) specs (append body (%include "include" (cdr d) #f))))
+              ((include-ci)
+               (loop (cdr decls) specs (append body (%include "include-ci" (cdr d) #t))))
+              ((include-library-declarations)
+               (loop (append (%include "include-library-declarations" (cdr d) #f) (cdr decls))
+                     specs
+                     body))
               ((cond-expand) (loop (append (%cond-expand-clause d) (cdr decls)) specs body))
               (else (%bad-syntax d))))))))
 

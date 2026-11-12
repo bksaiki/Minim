@@ -19,9 +19,10 @@ minim_obj minim_read_string(const char **s);
 bool minim_is_delimiter(int32_t c);
 
 /**
- * The forms of the file named by the string `path`, as a list.  Raises
- * `load: cannot open file` or a read error; the file is always closed.
+ * The forms of the file named by the string `path`, as a list, read as if
+ * after `#!fold-case` if `fold`.  Raises `load: cannot open file` or a read
+ * error; the file is always closed.
  */
-minim_obj minim_read_file(minim_obj path);
+minim_obj minim_read_file(minim_obj path, bool fold);
 
 #endif

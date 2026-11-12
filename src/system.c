@@ -269,10 +269,10 @@ static minim_obj prim_get_environment_variables(minim_obj *args, size_t n) {
 }
 
 // The forms of the file `args[0]`, as `load` reads them.
+// The forms of the file `args[0]`, folded if `args[1]` is given and true.
 static minim_obj prim_read_file(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "%read-file: not a string", args[0]);
-    return minim_read_file(args[0]);
+    return minim_read_file(args[0], n == 2 && args[1] != MINIM_FALSE);
 }
 
 const minim_prim_def minim_system_prims[] = {
@@ -283,7 +283,7 @@ const minim_prim_def minim_system_prims[] = {
     {"%exit", prim_exit, 1, 1},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"get-environment-variables", prim_get_environment_variables, 0, 0},
-    {"%read-file", prim_read_file, 1, 1},
+    {"%read-file", prim_read_file, 1, 2},
     {"current-second", prim_current_second, 0, 0},
     {"current-jiffy", prim_current_jiffy, 0, 0},
     {"jiffies-per-second", prim_jiffies_per_second, 0, 0},
