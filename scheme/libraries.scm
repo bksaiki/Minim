@@ -57,9 +57,10 @@
   (let ((file (%library-file name))
         (var (get-environment-variable "MINIM_LIBRARY_PATH")))
     (let loop ((dirs (cons "" (if var (%split var #\:) '()))))
-      (cond ((null? dirs) #f)
-            ((file-exists? (%join (car dirs) file)) (%join (car dirs) file))
-            (else (loop (cdr dirs)))))))
+      (if (null? dirs)
+          #f
+          (let ((path (%join (car dirs) file)))
+            (if (file-exists? path) path (loop (cdr dirs))))))))
 
 ;; Loads the file for the library `name`, if there is one.
 (define (%load-library name)
