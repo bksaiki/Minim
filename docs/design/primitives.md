@@ -80,8 +80,8 @@ there on, so a fixnum overflow before one still raises.
 | `(- n)`, `(- n m ...)` | negation, or `n` minus the rest |
 | `(* n ...)` | product; `1` with no arguments |
 | `(/ n)`, `(/ n m ...)` | reciprocal, or `n` divided by the rest: exact if the fixnums divide evenly, else a flonum.  An exact zero divisor raises; an inexact one gives an infinity or NaN |
-| `(quotient n m)` | `n / m`, truncated toward zero; fixnums only |
-| `(remainder n m)` | remainder with the sign of `n`; fixnums only |
+| `(quotient n m)` | the integer `n / m`, truncated toward zero; of integers, fixnums or integral flonums, inexact if either is.  A zero divisor raises |
+| `(remainder n m)` | remainder with the sign of `n`, by `fmod` for flonums; likewise |
 | `(= n ...)` | whether all are equal |
 | `(< n ...)`, `(> ...)`, `(<= ...)`, `(>= ...)` | whether each adjacent pair is in order |
 | `(floor n)`, `(ceiling n)`, `(truncate n)`, `(round n)` | `n` rounded; `round` to even.  A fixnum is itself |
@@ -94,10 +94,18 @@ there on, so a fixnum overflow before one still raises.
 | `(flonum? x)` | whether `x` is a flonum; Minim's own, after Chez, in `(minim)` |
 | `(number->string n [radix])` | `n` in radix 2, 8, 10 (default), or 16, as `write` prints it; a flonum's radix only 10 |
 | `(string->number s [radix])` | the number `s` denotes, as the reader reads it, in the radix (default 10) unless a prefix gives one; `#f` if it isn't one |
+| `(sqrt n)` | the square root; exact for an exact perfect square |
+| `(exp n)`, `(log n [base])`, `(sin n)`, `(cos n)`, `(tan n)`, `(asin n)`, `(acos n)`, `(atan n [x])` | C's, `atan` of two `atan2`; flonums, but exact at exact special points: `(exp 0)` 1, `(log 1)` 0, `(sin 0)` 0, `(cos 0)` 1, `(acos 1)` 0, `(atan 0 x)` 0 for an exact positive `x`, ... |
+| `(%expt b e)` | `pow` of the two, a flonum; for `expt` |
 
 Comparison is exact across types: a fixnum and a flonum compare as their
 true values, though a fixnum may not fit a double.  Every comparison with
 NaN is false.
+
+Without complex numbers, a function whose result would be complex raises
+`<name>: no real result` for an exact argument, as exact operations raise
+for results they can't represent: `(sqrt -4)`, `(log -1)`, `(asin 2)`.  An
+inexact argument gives NaN, as IEEE does.
 
 ### Chars
 

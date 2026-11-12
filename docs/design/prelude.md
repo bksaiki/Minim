@@ -9,7 +9,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `base.scm` | `identity`, and the comparisons of booleans, symbols, and chars ignoring case |
 | `lists.scm` | the list library |
 | `sequences.scm` | strings, vectors, and bytevectors beyond their primitives, and their higher-order procedures |
-| `numbers.scm` | the number procedures built on arithmetic and comparison |
+| `numbers.scm` | the number procedures built on arithmetic and comparison: integer division, powers and roots, fractions |
 | `control.scm` | `call/cc`, `dynamic-wind`, exceptions, `guard`'s procedure, and parameters |
 | `records.scm` | the procedures `define-record-type` binds |
 | `expander.scm` | the expander (`macros.md`) |
@@ -116,6 +116,15 @@ accessors, so it serves every type and `string->vector` alike.
 | `(max n ...)`, `(min n ...)` | the greatest or least; inexact if any argument is, NaN if any is |
 | `(finite? n)`, `(infinite? n)`, `(nan? n)` | `(scheme inexact)`'s tests of `n` |
 | `(exact->inexact n)`, `(inexact->exact n)` | `inexact` and `exact` renamed by `procedure-rename`, so their errors name `inexact` and `exact` |
+| `(truncate-quotient n m)`, `(truncate-remainder n m)` | `quotient` and `remainder` renamed |
+| `(floor-quotient n m)`, `(floor-remainder n m)`, `(modulo n m)` | integer division rounding the quotient down: `quotient`'s, less 1 when the remainder's sign differs from `m`'s, and the remainder to match |
+| `(floor/ n m)`, `(truncate/ n m)` | both, as two values |
+| `(gcd n ...)`, `(lcm n ...)` | of integers, non-negative, inexact if any argument is; `(gcd)` 0, `(lcm)` 1 |
+| `(square z)` | `(* z z)` |
+| `(expt b e)` | exact for exact arguments, by squaring, a negative exponent dividing 1 by the power; else `%expt` |
+| `(exact-integer-sqrt k)` | `s` and `k - s^2`, with `s^2 <= k < (s+1)^2`, from `sqrt`'s double, corrected |
+| `(numerator q)`, `(denominator q)` | of the rational `q`: an exact integer over 1, or a flonum doubled until integral over 2 to the doublings, as flonums |
+| `(rationalize x y)` | the simplest rational within `y` of `x`, by R4RS's recursion on `floor`: an integer for exact arguments |
 | `(char-ci=? c ...)`, `(char-ci<? ...)`, ... | the char comparisons, of the chars' `char-foldcase`s |
 | `(boolean=? b ...)`, `(symbol=? s ...)` | whether the booleans, or symbols, are all the same |
 | `(identity x)` | `x`; Minim's own, in `(minim)` |

@@ -30,6 +30,19 @@
 
 ;; The subset of (chibi test) the suite uses.
 
+;; Whether `v` passes for `want`, as Chibi's `test-equal?`: `equal?`, or, if
+;; `want` is an inexact real, a real within a relative 1e-5 of it, as the
+;; suite writes such values to about 15 digits.  (Minim has no complex numbers,
+;; which Chibi compares part by part.)
+(define (runner-equal? want v)
+  (or (equal? want v)
+      (and (real? want) (inexact? want) (real? v) (runner-approx? want v 1e-5))))
+
+(define (runner-approx? a b epsilon)
+  (cond ((> (abs a) (abs b)) (runner-approx? b a epsilon))
+        ((zero? a) (< (abs b) epsilon))
+        (else (< (abs (/ (- a b) b)) epsilon))))
+
 ;; Counts a test of `expr` passing if `(ok? value)`, its value from `thunk`.
 (define (runner-check expr ok? thunk)
   (guard (e (#t (set! runner-failed (+ runner-failed 1))
@@ -46,7 +59,7 @@
     ((_ name expected expr) (test expected expr))
     ((_ expected expr)
      (let ((want expected))
-       (runner-check 'expr (lambda (v) (equal? v want)) (lambda () expr))))))
+       (runner-check 'expr (lambda (v) (runner-equal? want v)) (lambda () expr))))))
 
 (define-syntax test-assert
   (syntax-rules ()

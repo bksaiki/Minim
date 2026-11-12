@@ -179,3 +179,80 @@
 (map round '(2.5 -2.5 3.5 -0.4 0.6 3))
 (round +inf.0)
 (floor 'a)
+
+; Integer division, truncating and flooring, of integers exact or inexact:
+; R7RS 6.2.6's signs, R5RS's names, and the names printed.
+(define (both f n m)
+  (call-with-values (lambda () (f n m)) list))
+(list (both floor/ 5 2) (both floor/ -5 2) (both floor/ 5 -2) (both floor/ -5 -2))
+(list (both truncate/ 5 2) (both truncate/ -5 2) (both truncate/ 5 -2) (both truncate/ -5 -2))
+(list (modulo 13 4) (modulo -13 4) (modulo 13 -4) (modulo -13 -4))
+(list (remainder 13 -4) (remainder -13 4))
+(list (remainder -13 -4.0) (modulo -13 4.0) (floor-quotient 7.0 -2) (quotient 6.0 4))
+(list (truncate-quotient 7 2) (truncate-remainder -7 2) (floor-quotient -7 2)
+      (floor-remainder -7 2))
+(list truncate-quotient modulo)
+(list (gcd 32 -36) (gcd) (gcd 0 5) (gcd 0.0) (lcm 32 -36) (lcm 32.0 -36) (lcm) (lcm 0 5))
+(quotient 7.5 2)
+(remainder 7 0.0)
+(modulo 7 0)
+(quotient -1152921504606846976 -1)
+(gcd 'a)
+(lcm 1.5)
+
+; Powers and roots: exact for exact arguments where the result is.
+(list (square 5) (square -2.5) (square 1073741823))
+(list (expt 2 10) (expt 2.0 10) (expt 2 10.0) (expt 4 0.5) (expt 2 59) (expt -2 3))
+(list (expt 0 0) (expt 0.0 0) (expt 2 -1) (expt -1 -3) (expt 3 -2))
+(map (lambda (k) (call-with-values (lambda () (exact-integer-sqrt k)) list))
+     '(0 4 5 1152921504606846975))
+(list (sqrt 9) (sqrt 0) (sqrt 2) (sqrt 9.0) (sqrt 1152921504606846975))
+
+; Transcendental functions: exact at exact special points, else flonums.
+(list (exp 0) (log 1) (log 1 10) (sin 0) (cos 0) (tan 0) (asin 0) (acos 1) (atan 0)
+      (atan 0 1))
+(list (exp 0.0) (sin 0.0) (log 0) (atan 1 0))
+(define (close? a b)
+  (< (abs (- a b)) 1e-12))
+(list (close? (exp 1) 2.718281828459045) (close? (log 100 10) 2.0)
+      (close? (log 8 2) 3.0) (close? (sin 1) 0.8414709848078965)
+      (close? (cos 1) 0.5403023058681398) (close? (tan 1) 1.5574077246549023)
+      (close? (asin 1) 1.5707963267948966) (close? (acos 0) 1.5707963267948966)
+      (close? (atan 1) 0.7853981633974483) (close? (atan 1 1) 0.7853981633974483)
+      (close? (atan -1 -1) -2.356194490192345))
+
+; Without complex numbers: NaN for an inexact argument; raises for an exact one.
+(list (sqrt -4.0) (log -1.0) (asin 2.0) (acos -2.0))
+
+; The inexact functions in a library importing (scheme inexact).
+(define-library (inexact-user)
+  (export f)
+  (import (scheme base) (scheme inexact))
+  (begin
+    (define (f)
+      (list (sqrt 16) (exp 0) (log 1) (sin 0) (cos 0) (tan 0) (asin 0) (acos 1) (atan 0)
+            (finite? 1) (infinite? 1) (nan? 1)))))
+(import (inexact-user))
+(f)
+
+(square 'a)
+(expt 2 60)
+(expt 'a 2)
+(exact-integer-sqrt -1)
+(exact-integer-sqrt 4.0)
+(sqrt -4)
+(log -1)
+(log 2 -1)
+(asin 2)
+(acos -2)
+(exp 'a)
+
+; Fractions: an exact number is an integer, over 1; a flonum a dyadic rational.
+(list (numerator 6) (denominator 6) (numerator 5.5) (denominator 5.5)
+      (numerator 5.0) (denominator 5.0) (numerator -0.75) (denominator -0.75))
+(list (rationalize 3 1) (rationalize .3 .1) (rationalize 5 0) (rationalize -3 1)
+      (rationalize 3 -1) (rationalize +inf.0 3) (rationalize 3 +inf.0)
+      (rationalize +nan.0 1) (rationalize 1 +nan.0))
+(numerator +inf.0)
+(denominator 'a)
+(rationalize 'a 1)

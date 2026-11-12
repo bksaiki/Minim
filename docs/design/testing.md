@@ -45,7 +45,9 @@ vector, or block comment, and reads and evaluates each under `guard`, so syntax
 or procedures Minim lacks fail only their form.  It reports each failing
 test (`FAIL`), other error (`ERROR`, `READ-ERROR`), and skipped form
 (`SKIP`, for forms that would hang Minim) with the line it starts at, then
-the counts.
+the counts.  `test` compares as Chibi's does: `equal?`, or, for an inexact
+expected value, within a relative 1e-5, since the suite writes them to about
+15 digits and `libm`s differ in the last bit.
 
 The expected reports hold today's failures, so a test fails only when a
 report changes: a fix as much as a regression.  After a deliberate change,
