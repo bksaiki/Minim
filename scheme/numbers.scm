@@ -181,7 +181,8 @@
   (cdr (%fraction q "denominator: not a rational")))
 
 ;; The simplest rational within `y` of `x` (R7RS 6.2.6), by the recursion on
-;; `floor` of R4RS's reference implementation; inexact if either is.
+;; `floor` of R4RS's reference implementation; inexact if either is, and NaN
+;; if either is.
 (define (rationalize x y)
   (define (simplest lo hi)
     (cond ((> lo 0) (simplest-positive lo hi))
@@ -195,4 +196,6 @@
             (else (+ fl (/ 1 (simplest-positive (/ 1 (- hi fl)) (/ 1 (- lo fl)))))))))
   (%check real? x "rationalize: not a real number")
   (%check real? y "rationalize: not a real number")
-  (simplest (- x (abs y)) (+ x (abs y))))
+  (if (or (nan? x) (nan? y))
+      +nan.0
+      (simplest (- x (abs y)) (+ x (abs y)))))
