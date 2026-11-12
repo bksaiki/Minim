@@ -179,3 +179,23 @@
 (map round '(2.5 -2.5 3.5 -0.4 0.6 3))
 (round +inf.0)
 (floor 'a)
+
+; Integer division, truncating and flooring, of integers exact or inexact:
+; R7RS 6.2.6's signs, R5RS's names, and the names printed.
+(define (both f n m)
+  (call-with-values (lambda () (f n m)) list))
+(list (both floor/ 5 2) (both floor/ -5 2) (both floor/ 5 -2) (both floor/ -5 -2))
+(list (both truncate/ 5 2) (both truncate/ -5 2) (both truncate/ 5 -2) (both truncate/ -5 -2))
+(list (modulo 13 4) (modulo -13 4) (modulo 13 -4) (modulo -13 -4))
+(list (remainder 13 -4) (remainder -13 4))
+(list (remainder -13 -4.0) (modulo -13 4.0) (floor-quotient 7.0 -2) (quotient 6.0 4))
+(list (truncate-quotient 7 2) (truncate-remainder -7 2) (floor-quotient -7 2)
+      (floor-remainder -7 2))
+(list truncate-quotient modulo)
+(list (gcd 32 -36) (gcd) (gcd 0 5) (gcd 0.0) (lcm 32 -36) (lcm 32.0 -36) (lcm) (lcm 0 5))
+(quotient 7.5 2)
+(remainder 7 0.0)
+(modulo 7 0)
+(quotient -1152921504606846976 -1)
+(gcd 'a)
+(lcm 1.5)

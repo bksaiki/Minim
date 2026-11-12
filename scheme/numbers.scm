@@ -1,5 +1,5 @@
 ;;; Numbers (R7RS 6.2.6): the tests and procedures built on arithmetic and
-;;; comparison, and R5RS's names for `inexact` and `exact`.
+;;; comparison, integer division, and R5RS's names for `inexact` and `exact`.
 
 (define (zero? z)
   (%check number? z "zero?: not a number")
@@ -74,3 +74,56 @@
 (define exact->inexact (procedure-rename inexact 'exact->inexact))
 
 (define inexact->exact (procedure-rename exact 'inexact->exact))
+
+;;; Integer division, over `quotient` and `remainder`, which truncate.
+
+(define truncate-quotient (procedure-rename quotient 'truncate-quotient))
+
+(define truncate-remainder (procedure-rename remainder 'truncate-remainder))
+
+;; Whether `r`, the remainder of a truncating division by `m`, has the other
+;; sign, so flooring adjusts the result.
+(define (%floor-adjusts? r m)
+  (not (or (zero? r) (eq? (negative? r) (negative? m)))))
+
+(define (floor-quotient n m)
+  (let ((q (quotient n m)))
+    (if (%floor-adjusts? (remainder n m) m) (- q 1) q)))
+
+(define (floor-remainder n m)
+  (let ((r (remainder n m)))
+    (if (%floor-adjusts? r m) (+ r m) r)))
+
+(define modulo (procedure-rename floor-remainder 'modulo))
+
+(define (floor/ n m)
+  (values (floor-quotient n m) (floor-remainder n m)))
+
+(define (truncate/ n m)
+  (values (quotient n m) (remainder n m)))
+
+;; `op` folded over the integers `ns` from `init`; inexact if any is.  Raises
+;; `msg` on a non-integer.
+(define (%fold-integers op init msg ns)
+  (let loop ((ns ns) (acc init) (any-inexact #f))
+    (if (null? ns)
+        (if any-inexact (inexact acc) acc)
+        (let ((n (car ns)))
+          (%check integer? n msg)
+          (loop (cdr ns) (op acc n) (or any-inexact (inexact? n)))))))
+
+;; The greatest common divisor of the integers `a` and `b`, by Euclid's.
+(define (%gcd a b)
+  (if (zero? b)
+      (abs a)
+      (%gcd b (remainder a b))))
+
+(define (gcd . ns)
+  (%fold-integers %gcd 0 "gcd: not an integer" ns))
+
+(define (lcm . ns)
+  (%fold-integers (lambda (a b)
+                    (if (or (zero? a) (zero? b)) 0 (abs (* (quotient a (%gcd a b)) b))))
+                  1
+                  "lcm: not an integer"
+                  ns))

@@ -11,12 +11,13 @@
    current-input-port current-output-port define define-record-type define-syntax
    define-values do dynamic-wind else eof-object eof-object? eq? equal? eqv? error
    error-object-irritants error-object-message error-object? even? exact exact-integer?
-   exact? features file-error? floor flush-output-port for-each get-output-bytevector
-   get-output-string guard if include include-ci inexact inexact? input-port-open? input-port?
-   integer->char integer? lambda length let let* let*-values let-syntax let-values letrec letrec*
-   letrec-syntax list list->string list->vector list-copy list-ref list-set! list-tail list?
-   make-bytevector make-list make-parameter make-string make-vector map max member memq memv
-   min negative? newline not null? number->string number? odd? open-input-bytevector
+   exact? features file-error? floor floor-quotient floor-remainder floor/ flush-output-port
+   for-each gcd get-output-bytevector get-output-string guard if include include-ci inexact
+   inexact? input-port-open? input-port? integer->char integer? lambda lcm length let let*
+   let*-values let-syntax let-values letrec letrec* letrec-syntax list list->string
+   list->vector list-copy list-ref list-set! list-tail list? make-bytevector make-list
+   make-parameter make-string make-vector map max member memq memv min modulo negative?
+   newline not null? number->string number? odd? open-input-bytevector
    open-input-string open-output-bytevector open-output-string or output-port-open?
    output-port? pair? parameterize peek-char peek-u8 port? positive? procedure? quasiquote
    quote quotient raise raise-continuable rational? read-bytevector read-bytevector!
@@ -25,7 +26,8 @@
    string->vector string-append string-copy string-copy! string-fill! string-for-each
    string-length string-map string-ref string-set! string<=? string<? string=? string>=?
    string>? string? substring symbol->string symbol=? symbol? syntax-error syntax-rules
-   textual-port? truncate u8-ready? unless unquote unquote-splicing utf8->string values
+   textual-port? truncate truncate-quotient truncate-remainder truncate/ u8-ready? unless
+   unquote unquote-splicing utf8->string values
    vector vector->list vector->string vector-append vector-copy vector-copy! vector-fill!
    vector-for-each vector-length vector-map vector-ref vector-set! vector? when
    with-exception-handler write-bytevector write-char write-string write-u8 zero?))
@@ -70,11 +72,11 @@
    char-ready? char-upcase char-upper-case? char-whitespace? char<=? char<? char=? char>=?
    char>? char? close-input-port close-output-port complex? cond cons current-input-port
    current-output-port define define-syntax delay display do dynamic-wind else eof-object?
-   eq? equal? eqv? even? exact->inexact exact? floor for-each force if inexact->exact
-   inexact? input-port? integer->char integer? lambda length let let* let-syntax letrec
+   eq? equal? eqv? even? exact->inexact exact? floor for-each force gcd if inexact->exact
+   inexact? input-port? integer->char integer? lambda lcm length let let* let-syntax letrec
    letrec-syntax list list->string list->vector list-ref list-tail list? load make-string
-   make-vector map max member memq memv min negative? newline not null-environment null?
-   number->string number? odd? open-input-file open-output-file or output-port? pair?
+   make-vector map max member memq memv min modulo negative? newline not null-environment
+   null? number->string number? odd? open-input-file open-output-file or output-port? pair?
    peek-char positive? procedure? quasiquote quote quotient rational? read read-char real?
    remainder reverse round scheme-report-environment set! set-car! set-cdr! string
    string->list string->number string->symbol string-append string-ci<=? string-ci<?

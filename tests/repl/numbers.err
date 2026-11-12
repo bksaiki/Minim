@@ -30,3 +30,9 @@ error: exact: no exact representation: +nan.0
 error: exact: fixnum out of range: 1152921504606847000.0
 error: inexact: not a number: a
 error: floor: not a number: a
+error: quotient: not an integer: 7.5
+error: remainder: division by zero: 0.0
+error: remainder: division by zero: 0
+error: quotient: fixnum overflow
+error: gcd: not an integer: a
+error: lcm: not an integer: 1.5

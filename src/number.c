@@ -314,20 +314,36 @@ static minim_obj prim_ge(minim_obj *args, size_t n) {
     return compare_nums(args, n, GT | EQ, ">=: not a number");
 }
 
-static minim_obj prim_quotient(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
-    intptr_t a = fixnum_arg(args[0], "quotient: not a fixnum");
-    intptr_t b = fixnum_arg(args[1], "quotient: not a fixnum");
-    check(b != 0, "quotient: division by zero", args[1]);
-    return fixnum_result(a / b, "quotient: fixnum overflow");
+// The integer `x`, a fixnum or an integral flonum; raises `msg` otherwise.
+static num integer_arg(minim_obj x, const char *msg) {
+    num a = num_arg(x, msg);
+    check(!a.flo || is_integral(a.d), msg, x);
+    return a;
 }
 
+// Integer division truncating toward zero; inexact if either argument is.
+static minim_obj prim_quotient(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = integer_arg(args[0], "quotient: not an integer");
+    num b = integer_arg(args[1], "quotient: not an integer");
+    check(num_double(b) != 0, "quotient: division by zero", args[1]);
+    if (a.flo || b.flo) {
+        double x = num_double(a);
+        double y = num_double(b);
+        return minim_make_flonum((x - fmod(x, y)) / y);
+    }
+    return fixnum_result(a.i / b.i, "quotient: fixnum overflow");
+}
+
+// The remainder of truncating division, with the sign of the dividend.
 static minim_obj prim_remainder(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
-    intptr_t a = fixnum_arg(args[0], "remainder: not a fixnum");
-    intptr_t b = fixnum_arg(args[1], "remainder: not a fixnum");
-    check(b != 0, "remainder: division by zero", args[1]);
-    return minim_fixnum(a % b);
+    num a = integer_arg(args[0], "remainder: not an integer");
+    num b = integer_arg(args[1], "remainder: not an integer");
+    check(num_double(b) != 0, "remainder: division by zero", args[1]);
+    if (a.flo || b.flo)
+        return minim_make_flonum(fmod(num_double(a), num_double(b)));
+    return minim_fixnum(a.i % b.i);
 }
 
 // The radix args[i]: 2, 8, 10, or 16, or 10 if absent; raises `msg` otherwise.
