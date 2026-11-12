@@ -812,11 +812,20 @@ minim_obj minim_read(minim_obj port);
 
 // Printing
 
-/** Writes `x` to `out` in `write` syntax.  Never allocates. */
+/**
+ * Writes `x` to `out` in `write` syntax, with datum labels on its cycles.
+ * Never allocates on the heap.
+ */
 void minim_write(FILE *out, minim_obj x);
 
 /** Writes `x` to the open output port `port`, as minim_write. */
 void minim_port_write(minim_obj port, minim_obj x);
+
+/** Writes `x` to the open output port `port`, labeling every pair and vector it shares. */
+void minim_port_write_shared(minim_obj port, minim_obj x);
+
+/** Writes `x` to the open output port `port` without datum labels. */
+void minim_port_write_simple(minim_obj port, minim_obj x);
 
 /** Writes `x` to the open output port `port`, as minim_display. */
 void minim_port_display(minim_obj port, minim_obj x);

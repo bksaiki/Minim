@@ -15,6 +15,7 @@
 #include "number.h"
 #include "port.h"
 #include "symbol.h"
+#include "table.h"
 #include "unicode.h"
 
 // Characters of the token being read.  Static, so an error can't leak it.
@@ -93,6 +94,7 @@ typedef struct source {
     const unsigned char *str;   // next byte of the string
     const unsigned char *prev;  // start of the string's last code point read
     bool fold;                  // for a string, whether `#!fold-case` is in effect
+    minim_obj *labels;          // the datum labels of the datum being read, rooted
 } source;
 
 // Whether identifiers and char names read from `in` are folded.
@@ -382,8 +384,100 @@ static void skip_block_comment(source *in) {
     }
 }
 
+// A datum label: `#(n placeholder value referenced?)`, its value
+// MINIM_UNBOUND until its datum is read.
+enum { LABEL_N, LABEL_PLACEHOLDER, LABEL_VALUE, LABEL_REFERENCED, LABEL_SIZE };
+
+// The label numbered `n` of the datum being read, or #f.
+static minim_obj find_label(source *in, intptr_t n) {
+    for (minim_obj l = *in->labels; !minim_is_null(l); l = minim_cdr(l)) {
+        if (minim_fixnum_value(minim_vector_ref(minim_car(l), LABEL_N)) == n)
+            return minim_car(l);
+    }
+    return MINIM_FALSE;
+}
+
+// Replaces `placeholder` by `value` in the pairs and vectors of `x`.
+// Allocates nothing on the heap.
+static void patch(minim_obj x, minim_obj placeholder, minim_obj value) {
+    minim_walk w = {0};
+    minim_walk_push(&w, x);
+    while (w.len > 0) {
+        x = w.items[--w.len];
+        if (minim_is_pair(x)) {
+            if (minim_car(x) == placeholder)
+                minim_set_car(x, value);
+            else
+                minim_walk_push(&w, minim_car(x));
+            if (minim_cdr(x) == placeholder)
+                minim_set_cdr(x, value);
+            else
+                minim_walk_push(&w, minim_cdr(x));
+        } else {
+            for (size_t i = 0; i < minim_vector_length(x); i++) {
+                if (minim_vector_ref(x, i) == placeholder)
+                    minim_vector_set(x, i, value);
+                else
+                    minim_walk_push(&w, minim_vector_ref(x, i));
+            }
+        }
+    }
+    minim_walk_free(&w);
+}
+
+// Reads a datum label after its `#`, `c` its first digit: `#n=` and the
+// datum it labels, or a reference to one, `#n#`.
+static minim_obj read_label(source *in, int32_t c) {
+    token.len = 0;
+    token_push('#');
+    intptr_t n = 0;
+    for (; c >= '0' && c <= '9'; c = next(in)) {
+        token_push((uint32_t)c);
+        if (n > (MINIM_FIXNUM_MAX - 9) / 10)
+            read_error("bad datum label", token_string());
+        n = 10 * n + (c - '0');
+    }
+    if (c != '=' && c != '#') {
+        if (c >= 0)
+            token_push((uint32_t)c);
+        read_error("bad # syntax", token_string());
+    }
+
+    minim_obj label = find_label(in, n);
+    if (c == '#') {
+        if (label == MINIM_FALSE)
+            read_error("undefined datum label", minim_fixnum(n));
+        minim_obj value = minim_vector_ref(label, LABEL_VALUE);
+        if (value != MINIM_UNBOUND)
+            return value;
+        minim_vector_set(label, LABEL_REFERENCED, MINIM_TRUE);
+        return minim_vector_ref(label, LABEL_PLACEHOLDER);
+    }
+
+    if (label != MINIM_FALSE)
+        read_error("duplicate datum label", minim_fixnum(n));
+    label = minim_make_vector(LABEL_SIZE, MINIM_FALSE);
+    MINIM_FRAME(&label);
+    minim_vector_set(label, LABEL_N, minim_fixnum(n));
+    minim_vector_set(label, LABEL_VALUE, MINIM_UNBOUND);
+    minim_obj placeholder = minim_cons(MINIM_FALSE, MINIM_FALSE);
+    minim_vector_set(label, LABEL_PLACEHOLDER, placeholder);
+    *in->labels = minim_cons(label, *in->labels);
+
+    minim_obj x = read_required(in, "bad datum label");
+    placeholder = minim_vector_ref(label, LABEL_PLACEHOLDER);
+    if (x == placeholder)
+        read_error("bad datum label", minim_fixnum(n));
+    minim_vector_set(label, LABEL_VALUE, x);
+    if (minim_vector_ref(label, LABEL_REFERENCED) == MINIM_TRUE)
+        patch(x, placeholder, x);
+    MINIM_RETURN(x);
+}
+
 // Reads the datum after `#c`, `c` read.
 static minim_obj read_hash(source *in, int32_t c) {
+    if (c >= '0' && c <= '9')
+        return read_label(in, c);
     if (c == '(')
         return read_vector(in);
     if (c == '\\')
@@ -504,16 +598,19 @@ static int read_item_from(source *in, int32_t c, minim_obj *x) {
 }
 
 static minim_obj read_datum(source *in) {
+    minim_obj labels = MINIM_NIL;
+    MINIM_FRAME(&labels);
+    in->labels = &labels;
     minim_obj x;
     switch (read_item(in, &x)) {
     case END:
-        return MINIM_EOF;
+        MINIM_RETURN(MINIM_EOF);
     case CLOSE:
         read_error("unexpected )", MINIM_VOID);
     case DOT:
         read_error("unexpected .", MINIM_VOID);
     default:
-        return x;
+        MINIM_RETURN(x);
     }
 }
 

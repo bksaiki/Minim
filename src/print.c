@@ -14,6 +14,7 @@
 #include "port.h"
 #include "read.h"
 #include "symbol.h"
+#include "table.h"
 
 // Where the printer writes: a file, or a buffer of chars, malloc'd, so that
 // printing never allocates on the heap.
@@ -22,7 +23,12 @@ typedef struct sink {
     uint32_t *chars;
     size_t len;
     size_t cap;
+    minim_table labels;     // pairs and vectors to label: 0, then their label + 1
+    uintptr_t next_label;
 } sink;
+
+// Which pairs and vectors print with datum labels.
+typedef enum labeling { LABEL_NONE, LABEL_CYCLES, LABEL_SHARED } labeling;
 
 static void put(sink *out, uint32_t c) {
     if (out->file != NULL) {
@@ -137,11 +143,91 @@ static void write_symbol(sink *out, minim_obj sym) {
         write_chars(out, name);
 }
 
+// Pairs and vectors still to walk, each entered, then left once its contents
+// are walked.
+typedef struct walk {
+    struct {
+        minim_obj x;
+        bool leave;
+    } *items;
+    size_t len;
+    size_t cap;
+} walk;
+
+static void walk_push(walk *w, minim_obj x, bool leave) {
+    if (!minim_is_pair(x) && !minim_is_vector(x))
+        return;
+    if (w->len == w->cap) {
+        w->cap = w->cap ? 2 * w->cap : 64;
+        w->items = realloc(w->items, w->cap * sizeof(*w->items));
+        if (w->items == NULL)
+            minim_out_of_memory();
+    }
+    w->items[w->len].x = x;
+    w->items[w->len].leave = leave;
+    w->len++;
+}
+
+enum { WALKING = 1, WALKED = 2 };
+
+// Records in `out->labels` the pairs and vectors of `x` to label: those
+// reached again while their contents are being walked, which are on cycles,
+// or, if `shared`, every one reached twice.
+static void find_labels(sink *out, minim_obj x, bool shared) {
+    minim_marks seen = {0};
+    walk w = {0};
+    walk_push(&w, x, false);
+    while (w.len > 0) {
+        w.len--;
+        x = w.items[w.len].x;
+        if (w.items[w.len].leave) {
+            minim_marks_set(&seen, x, WALKED);
+            continue;
+        }
+        unsigned state = minim_marks_visit(&seen, x, WALKING);
+        if (state != 0) {
+            if (shared || state == WALKING)
+                minim_table_add(&out->labels, x);
+            continue;
+        }
+        walk_push(&w, x, true);
+        if (minim_is_pair(x)) {
+            walk_push(&w, minim_cdr(x), false);
+            walk_push(&w, minim_car(x), false);
+        } else {
+            for (size_t i = minim_vector_length(x); i > 0; i--)
+                walk_push(&w, minim_vector_ref(x, i - 1), false);
+        }
+    }
+    free(w.items);
+    minim_marks_free(&seen);
+}
+
+static bool is_labeled(const sink *out, minim_obj x) {
+    return minim_table_find(&out->labels, x) != NULL;
+}
+
+// Writes the label of `x`, if it has one: `#n#` if `x` was printed before,
+// returning true, else `#n=`, numbering it.
+static bool write_label(sink *out, minim_obj x) {
+    uintptr_t *label = minim_table_find(&out->labels, x);
+    if (label == NULL)
+        return false;
+    bool printed = *label != 0;
+    if (!printed)
+        *label = ++out->next_label;
+    char buf[32];
+    snprintf(buf, sizeof(buf), "#%" PRIuPTR "%c", *label - 1, printed ? '#' : '=');
+    put_ascii(out, buf);
+    return printed;
+}
+
 // The abbreviation for the pair `x` if it is `(quote d)`, `(quasiquote d)`,
-// `(unquote d)`, or `(unquote-splicing d)`; otherwise NULL.
-static const char *abbreviation(minim_obj x) {
+// `(unquote d)`, or `(unquote-splicing d)`, its second pair unlabeled;
+// otherwise NULL.
+static const char *abbreviation(const sink *out, minim_obj x) {
     minim_obj rest = minim_cdr(x);
-    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)))
+    if (!minim_is_pair(rest) || !minim_is_null(minim_cdr(rest)) || is_labeled(out, rest))
         return NULL;
     minim_obj head = minim_car(x);
     minim_obj d = minim_car(rest);
@@ -162,7 +248,7 @@ static const char *abbreviation(minim_obj x) {
 static void print(sink *out, minim_obj x, bool display);
 
 static void write_pair(sink *out, minim_obj x, bool display) {
-    const char *abbrev = abbreviation(x);
+    const char *abbrev = abbreviation(out, x);
     if (abbrev != NULL) {
         put_ascii(out, abbrev);
         print(out, minim_car(minim_cdr(x)), display);
@@ -171,8 +257,11 @@ static void write_pair(sink *out, minim_obj x, bool display) {
 
     put(out, '(');
     print(out, minim_car(x), display);
-    // A tail like `(unquote x)` prints dotted and abbreviated: `(a . ,x)`.
-    for (x = minim_cdr(x); minim_is_pair(x) && abbreviation(x) == NULL; x = minim_cdr(x)) {
+    // A tail like `(unquote x)` prints dotted and abbreviated, `(a . ,x)`, and a
+    // labeled one dotted, `(a . #0=(b . #0#))`.
+    for (x = minim_cdr(x);
+         minim_is_pair(x) && abbreviation(out, x) == NULL && !is_labeled(out, x);
+         x = minim_cdr(x)) {
         put(out, ' ');
         print(out, minim_car(x), display);
     }
@@ -290,6 +379,8 @@ static void write_flonum(sink *out, double d) {
 // Prints `x` in `write` syntax, or with strings and chars unescaped if
 // `display`.
 static void print(sink *out, minim_obj x, bool display) {
+    if ((minim_is_pair(x) || minim_is_vector(x)) && write_label(out, x))
+        return;
     if (minim_is_fixnum(x)) {
         char buf[24];
         snprintf(buf, sizeof(buf), "%" PRIdPTR, minim_fixnum_value(x));
@@ -350,28 +441,44 @@ static void print(sink *out, minim_obj x, bool display) {
         put_ascii(out, "#<garbage>");
 }
 
+// Prints `x` to `out`, its pairs and vectors labeled as `labeling` says.
+static void print_labeled(sink *out, minim_obj x, bool display, labeling labeling) {
+    if (labeling != LABEL_NONE)
+        find_labels(out, x, labeling == LABEL_SHARED);
+    print(out, x, display);
+    minim_table_free(&out->labels);
+}
+
 void minim_write(FILE *out, minim_obj x) {
     sink s = {.file = out};
-    print(&s, x, false);
+    print_labeled(&s, x, false, LABEL_CYCLES);
 }
 
 // A string port gets the chars after the walk, the only step that allocates.
-static void print_to_port(minim_obj port, minim_obj x, bool display) {
+static void print_to_port(minim_obj port, minim_obj x, bool display, labeling labeling) {
     if (minim_port_flags(port) & MINIM_PORT_FILE) {
         sink s = {.file = minim_port_file(port)};
-        print(&s, x, display);
+        print_labeled(&s, x, display, labeling);
         return;
     }
     sink s = {0};
-    print(&s, x, display);
+    print_labeled(&s, x, display, labeling);
     minim_port_write_chars(port, s.chars, s.len);
     free(s.chars);
 }
 
 void minim_port_write(minim_obj port, minim_obj x) {
-    print_to_port(port, x, false);
+    print_to_port(port, x, false, LABEL_CYCLES);
+}
+
+void minim_port_write_shared(minim_obj port, minim_obj x) {
+    print_to_port(port, x, false, LABEL_SHARED);
+}
+
+void minim_port_write_simple(minim_obj port, minim_obj x) {
+    print_to_port(port, x, false, LABEL_NONE);
 }
 
 void minim_port_display(minim_obj port, minim_obj x) {
-    print_to_port(port, x, true);
+    print_to_port(port, x, true, LABEL_CYCLES);
 }

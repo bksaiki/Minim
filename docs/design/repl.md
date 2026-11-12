@@ -21,6 +21,7 @@ and advances it.
 | `"..."` | string, with `\"`, `\\`, `\|`, `\a`, `\b`, `\n`, `\r`, `\t`, and `\xHH;` escapes, and line continuations (`\`, then a line ending, between intraline white space) |
 | `#\a`, `#\space`, `#\xHH`; R7RS's names (`#\null`, `#\alarm`, ...) and Chez's `#\nul` | char |
 | `#t`, `#f`, `#true`, `#false`, in any case | boolean |
+| `#0=(a . #0#)`, `(#1="s" #1#)` | datum labels (R7RS 2.4): `#n=` labels the datum after it, which `#n#` refers to, within one outermost datum.  An undefined, duplicate, or self-referring label is an error |
 | `'x`, `` `x ``, `,x`, `,@x` | `(quote x)`, `(quasiquote x)`, `(unquote x)`, `(unquote-splicing x)`; whitespace may follow, but `,@` is one token |
 | `\|a b\|` | symbol, named exactly, with the string escapes; never a number |
 | anything else up to a delimiter | symbol, including `+`, `-`, `...`, and `1/2`; case-sensitive unless folding |
@@ -60,17 +61,26 @@ walks `x`, so `minim_write` is safe on error paths.
 | char | `#\a`; R7RS's named chars by name (`#\null`, `#\delete`, ...); other control chars as `#\x1` |
 | string | `"..."` with `\"`, `\\`, `\a`, `\b`, `\n`, `\r`, `\t`; other control chars as `\x1;` |
 | symbol | its name, or, if that wouldn't read back as it, in bars with the strings' escapes and `\|`: the empty name, `.`, a name that parses as a number, `+i`, `-i`, one with a delimiter, `\`, or a control character, or starting with `#`, `'`, `` ` ``, or `,`.  Non-ASCII names are bare |
-| pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently |
+| pair | `(a b . c)`; `(quote x)` as `'x`, and likewise `` ` ``, `,`, `,@`, also as a tail: `(a . ,x)`.  `(unquote @x)` isn't abbreviated, since `,@x` would read back differently, nor is a form whose second pair is labeled |
 | vector | `#(a b)` |
 | bytevector | `#u8(0 255)` |
 | procedure | `#<procedure car>` with its name; `#<procedure>` for an unnamed closure |
 
 Output is UTF-8.  Everything except the `#<...>` forms reads back as equal
-data.  Cyclic data loops forever.
+data.
 
-`minim_display` is the same, except that strings, chars, and symbols,
-including nested ones, print as their characters: `(1 "a" #\b |c d|)`
-displays as `(1 a b c d)`.
+Datum labels: before printing a pair or vector, the printer walks it once,
+with an explicit stack, marking each object while its contents are walked
+(`minim_marks`).  One reached again while marked is on a cycle, and gets a
+label: printed `#n=` before its datum the first time, numbered from 0 in
+print order, and `#n#` after.  A labeled tail prints dotted, `(1 .
+#0=(2 . #0#))`.  Every cycle has such an object, so printing terminates.
+`write-shared` labels every pair and vector reached twice, and
+`write-simple` skips the walk.
+
+`minim_display` is the same, labels included, except that strings, chars,
+and symbols, including nested ones, print as their characters:
+`(1 "a" #\b |c d|)` displays as `(1 a b c d)`.
 
 ## REPL
 

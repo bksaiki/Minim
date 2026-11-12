@@ -73,8 +73,9 @@ lookahead.  `minim_read` raises its errors as read errors (`read-error?`).
 
 The printer never allocates while it walks a datum.  It writes to a sink: a
 file port's `FILE *` directly, or, for a string port, a malloc'd buffer of
-code points appended to the port after the walk.  `write` is `write-simple`:
-cyclic data loops forever.
+code points appended to the port after the walk.  `write` and `display`
+label cycles, `write-shared` all sharing, and `write-simple` nothing, so it
+loops on cycles (`repl.md`).
 
 ## Procedures
 
@@ -97,4 +98,4 @@ which closes the port when its procedure returns.  Binary:
 `call-with-input-file`, `call-with-output-file`, `with-input-from-file`,
 `with-output-to-file` (by `parameterize`), `delete-file`, and
 `file-exists?`.  `(scheme read)`: `read`.  `(scheme write)`: `write`,
-`display`, and `write-simple`.
+`display`, `write-shared`, and `write-simple`.

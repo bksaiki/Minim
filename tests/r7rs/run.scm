@@ -143,7 +143,7 @@
 
 ;; Forms that would hang Minim, by the line they start at, with why.
 (define runner-skips
-  '((2142 . "writes a cyclic list, which loops: no datum labels")))
+  '())
 
 ;; Reads and evaluates the data of `text`; a read error ends it.
 (define (runner-run-chunk text)

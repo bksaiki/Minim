@@ -46,7 +46,7 @@ provides.  Update it as names are added.
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 3 | 3 | |
-| `(scheme write)` | 3 | 4 | `write-shared` waits for datum labels |
+| `(scheme write)` | 4 | 4 | |
 
 **Target:** R7RS-small compliance: every standard library complete, as the
 coverage table measures, and the conformance suite passing.  Where R7RS lets
@@ -137,8 +137,8 @@ the reader and printer on ports (`docs/design/ports.md`).
 Gaps:
 
 - Done: binary ports, over bytevectors and files (8).
-- Cycles: `write` prints cyclic data forever, where R7RS labels cycles
-  (`#0=`, `#0#`); `write-shared` and reading labels are missing too (9).
+- Done: cycles, `write` and `display` labeling them, `write-shared`, and
+  reading labels (9).
 - `char-ready?` is always true: stdio can't tell whether input is waiting,
   so a read from a terminal after it may block.  Fixing it needs Minim's own
   buffers, as Chez has.
@@ -216,9 +216,9 @@ strings, vectors, and control.  Mostly prelude procedures.
   (`docs/design/prelude.md`).
 - Done: `(scheme time)`, over the wall clock and a monotonic one
   (`docs/design/primitives.md`).
-- Cycles: `write` with datum labels for cycles, `write-shared` for all
-  sharing, the reader's `#n=` and `#n#`, and `equal?` terminating on cyclic
-  data.  The printer and `equal?` loop on cycles today.
+- Done: cycles: `write` with datum labels for cycles, `write-shared` for
+  all sharing, the reader's `#n=` and `#n#`, `equal?` terminating on
+  cyclic data, and cyclic literals in code.
 
 ### 10. Conformance (S–M, ongoing)
 
@@ -244,8 +244,8 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.10 Control Features | 31 | 3 | 0 |
 | 6.11 Exceptions | 29 | 1 | 0 |
 | 6.12 Environments and evaluation | 1 | 3 | 0 |
-| 6.13 Input and output | 61 | 1 | 0 |
-| Read syntax | 90 | 3 | 0 |
+| 6.13 Input and output | 63 | 0 | 0 |
+| Read syntax | 92 | 1 | 0 |
 | Numeric syntax | 124 | 17 | 37 |
 | 6.14 System interface | 11 | 2 | 0 |
 | **Total** | 991 | 134 | 63 |

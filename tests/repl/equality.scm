@@ -54,6 +54,38 @@
 (= (equal-hash #u8(1 2)) (equal-hash #u8(1 2)))
 (eq? #u8(1) #u8(1))
 
+; equal? terminates on cyclic data: lists of different periods, vectors
+; holding themselves, cycles through cars.
+(define (circular . xs)
+  (let ((lst (list-copy xs)))
+    (set-cdr! (list-tail lst (- (length lst) 1)) lst)
+    lst))
+(define c1 (circular 1 2))
+(list (equal? c1 c1) (equal? c1 (circular 1 2)) (equal? c1 (circular 1 2 1 2))
+      (equal? (circular 1 2 1 2) c1) (equal? c1 (circular 1 2 1 3)) (equal? c1 (circular 1)))
+(define (self-vector x)
+  (let ((v (vector x #f)))
+    (vector-set! v 1 v)
+    v))
+(list (equal? (self-vector 1) (self-vector 1)) (equal? (self-vector 1) (self-vector 2)))
+(define (self-car . rest)
+  (let ((p (cons #f rest)))
+    (set-car! p p)
+    p))
+(list (equal? (self-car) (self-car)) (equal? (self-car) (self-car 1)))
+(define (self-pair)
+  (let ((p (list #f)))
+    (set-car! p p)
+    (set-cdr! p p)
+    p))
+(equal? (self-pair) (self-pair))
+
+; Long acyclic lists, past the budget, compare as before.
+(define (iota n)
+  (let loop ((i (- n 1)) (acc '()))
+    (if (< i 0) acc (loop (- i 1) (cons i acc)))))
+(list (equal? (iota 5000) (iota 5000)) (equal? (iota 5000) (append (iota 4999) '(x))))
+
 ; boolean=? and symbol=?: by identity, of one or more arguments.
 (boolean=? #t #t)
 (boolean=? #f #f #f)

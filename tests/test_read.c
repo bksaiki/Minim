@@ -23,6 +23,10 @@ static minim_obj read_port(void *s) {
     return minim_read(input(s));
 }
 
+static minim_obj read_port_again(void *port) {
+    return minim_read(*(minim_obj *)port);
+}
+
 static minim_obj read_string(void *s) {
     const char *p = s;
     return minim_read_string(&p);
@@ -305,6 +309,55 @@ static void test_fold_case(void) {
     MINIM_RETURN_VOID;
 }
 
+// `#n=` labels a datum, which `#n#` refers to, within one outermost datum.
+static void test_labels(void) {
+    minim_obj x = MINIM_NIL;
+    minim_obj port = MINIM_NIL;
+    MINIM_FRAME(&x, &port);
+    const char *p = "#0=(1 . #0#)";
+    x = minim_read_string(&p);
+    CHECK_EQ(minim_cdr(x), x);
+    p = "(#0=(1 2) #0#)";
+    x = minim_read_string(&p);
+    CHECK_EQ(minim_car(x), minim_car(minim_cdr(x)));
+    p = "(#0=\"a\" #0#)";
+    x = minim_read_string(&p);
+    CHECK_EQ(minim_car(x), minim_car(minim_cdr(x)));
+    p = "#0=#(1 #0#)";
+    x = minim_read_string(&p);
+    CHECK_EQ(minim_vector_ref(x, 1), x);
+    p = "#0=(#1=(a . #1#) . #0#)";
+    x = minim_read_string(&p);
+    CHECK_EQ(minim_cdr(x), x);
+    CHECK_EQ(minim_cdr(minim_car(x)), minim_car(x));
+
+    // Labels don't carry over to the next datum.
+    port = input("#0=(1) #0#");
+    CHECK(prints_as(minim_read(port), "(1)"));
+    CHECK(raises(read_port_again, &port, "#0#", "undefined datum label"));
+    MINIM_RETURN_VOID;
+}
+
+// What `write` prints of cyclic data reads back `equal?` to it.
+static void test_label_round_trips(void) {
+    static const char *const data[] = {
+        "(let ((c (list 1 2))) (set-cdr! (cdr c) c) c)",
+        "(let ((p (list #f))) (set-car! p p) p)",
+        "(let ((v (vector 1 #f))) (vector-set! v 1 v) v)",
+        "(let ((c (list 1 2))) (set-cdr! (cdr c) (cdr c)) c)",
+        "(let ((q (list 'quote 1))) (set-cdr! (cdr q) (cdr q)) q)",
+    };
+    char src[512];
+    for (size_t i = 0; i < sizeof(data) / sizeof(*data); i++) {
+        snprintf(src, sizeof(src),
+                 "(let ((x %s) (out (open-output-string)))"
+                 "  (write x out)"
+                 "  (equal? x (read (open-input-string (get-output-string out)))))",
+                 data[i]);
+        CHECK(evals_to(src, "#t"));
+    }
+}
+
 static void test_errors(void) {
     CHECK(read_fails_with(")", "unexpected )"));
     CHECK(read_fails_with(".", "unexpected ."));
@@ -325,6 +378,12 @@ static void test_errors(void) {
     CHECK(read_fails_with("|abc", "eof in symbol"));
     CHECK(read_fails_with("#!fold-casex", "bad # syntax"));
     CHECK(read_fails_with("#!foo", "bad # syntax"));
+    CHECK(read_fails_with("#0#", "undefined datum label"));
+    CHECK(read_fails_with("(#0=1 #1#)", "undefined datum label"));
+    CHECK(read_fails_with("#0=#0#", "bad datum label"));
+    CHECK(read_fails_with("(#0=1 #0=2)", "duplicate datum label"));
+    CHECK(read_fails_with("#0x", "bad # syntax"));
+    CHECK(read_fails_with("#0=", "bad datum label"));
     CHECK(read_fails_with("\"\\q\"", "bad string escape"));
     CHECK(read_fails_with("\"\\xZZ;\"", "bad string escape"));
     CHECK(read_fails_with("#q", "bad # syntax"));
@@ -359,6 +418,8 @@ int main(void) {
     test_stream();
     test_comments();
     test_fold_case();
+    test_labels();
+    test_label_round_trips();
     test_errors();
     minim_shutdown();
     return test_result();
