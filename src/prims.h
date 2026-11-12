@@ -27,6 +27,9 @@ minim_obj minim_prim_load(minim_obj *args, size_t n);
 /** The `%eval-expanded` primitive's function, which the evaluator recognizes. */
 minim_obj minim_prim_eval_expanded(minim_obj *args, size_t n);
 
+/** The `%eval-compiled` primitive's function, which the evaluator recognizes. */
+minim_obj minim_prim_eval_compiled(minim_obj *args, size_t n);
+
 /** Binds the primitives as global symbol values; call after minim_symbol_init. */
 void minim_prims_init(void);
 

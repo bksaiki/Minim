@@ -21,7 +21,8 @@ enum { F_KIND, F_NEXT, F_CODE, F_ENV, F_BASE, FRAME_SIZE };
 
 // Frame kinds, with what `code` holds.  For K_ARGS, `base` is the value-stack
 // height where its call's values start; for K_CALL_VALUES, the consumer's slot;
-// for K_LET_VALUES, the new frame its clauses bind into.
+// for K_LET_VALUES, the new frame its clauses bind into.  A kind with
+// K_COMPILED resumes in the simplified core.
 enum {
     K_IF,             // branches `(then [else])`
     K_SEQ,            // remaining body
@@ -33,6 +34,7 @@ enum {
     K_CALL_VALUES,    // unused
     K_DEFINE_VALUES,  // formals
     K_LET_VALUES,     // `(clauses . body)`, the first clause's init being evaluated
+    K_COMPILED = 0x100,
 };
 
 static minim_obj make_frame(intptr_t kind, minim_obj next, minim_obj code, minim_obj env,
@@ -112,6 +114,23 @@ static minim_obj clause_for(minim_obj c, size_t n) {
     minim_error("arity mismatch", c);
 }
 
+// The clause `(formals required rest? body)` of the compiled closure `c` that
+// accepts `n` arguments: its first whose arity does.
+static minim_obj compiled_clause_for(minim_obj c, size_t n) {
+    for (minim_obj cs = minim_cdr(minim_closure_code(c)); minim_is_pair(cs); cs = minim_cdr(cs)) {
+        minim_obj arity = minim_cdr(minim_car(cs));
+        size_t required = (size_t)minim_fixnum_value(minim_car(arity));
+        if (minim_car(minim_cdr(arity)) != MINIM_FALSE ? n >= required : n == required)
+            return minim_car(cs);
+    }
+    minim_error("arity mismatch", c);
+}
+
+// The body of the compiled clause `c`.
+static minim_obj compiled_clause_body(minim_obj c) {
+    return minim_car(minim_cdr(minim_cdr(minim_cdr(c))));
+}
+
 static bool primitive_accepts(minim_obj p, size_t n) {
     intptr_t max = minim_primitive_max_arity(p);
     return (intptr_t)n >= minim_primitive_min_arity(p)
@@ -181,6 +200,7 @@ static minim_obj run(minim_obj expr, bool many, bool expand, bool raise) {
     size_t base = 0;  // value-stack height where the applied call's values start
     // Values being returned: 1 in `val`, or any other count atop the value stack.
     size_t nvals = 1;
+    bool compiled = false;  // whether `expr` is in the simplified core
 
     MINIM_FRAME(&expr, &env, &val, &k, &x, &frame);
 
@@ -194,6 +214,7 @@ static minim_obj run(minim_obj expr, bool many, bool expand, bool raise) {
 
 toplevel:  // Expands `expr` with `%expand`, if `expand` and bound, then evaluates it globally.
     env = MINIM_NIL;
+    compiled = false;
     if (!expand || minim_symbol_value(minim_sym_expand) == MINIM_UNBOUND)
         goto eval;
     k = make_frame(K_EXPAND, k, MINIM_NIL, MINIM_NIL, MINIM_NIL);
@@ -203,7 +224,11 @@ toplevel:  // Expands `expr` with `%expand`, if `expand` and bound, then evaluat
     minim_stack_push(expr);
     goto apply;
 
-eval:  // Evaluates `expr` in `env`, then continues with `k`.
+next:  // Evaluates `expr`, in the language `compiled` says, in `env`.
+    if (compiled)
+        goto ceval;
+
+eval:  // Evaluates `expr`, in the core, in `env`, then continues with `k`.
     if (minim_is_symbol(expr)) {
         val = minim_env_lookup(env, expr);
         goto ret;
@@ -283,11 +308,58 @@ eval:  // Evaluates `expr` in `env`, then continues with `k`.
         goto eval;
     }
 
+ceval:  // Evaluates `expr`, in the simplified core, in `env`, unchecked.
+    if (minim_is_symbol(expr)) {
+        val = minim_env_lookup(env, expr);
+        goto ret;
+    }
+    x = minim_car(expr);
+    if (x == minim_sym_call) {
+        x = minim_cdr(expr);
+        minim_stack_reserve((size_t)list_length(x));
+        k = make_frame(K_ARGS | K_COMPILED, k, minim_cdr(x), env,
+                       minim_fixnum((intptr_t)minim_stack_height()));
+        expr = minim_car(x);
+        goto ceval;
+    }
+    if (x == minim_sym_quote) {
+        val = minim_car(minim_cdr(expr));
+        goto ret;
+    }
+    if (x == minim_sym_if) {
+        k = make_frame(K_IF | K_COMPILED, k, minim_cdr(minim_cdr(expr)), env, MINIM_NIL);
+        expr = minim_car(minim_cdr(expr));
+        goto ceval;
+    }
+    if (x == minim_sym_clambda) {
+        val = minim_make_closure(expr, env);
+        goto ret;
+    }
+    if (x == minim_sym_begin) {
+        x = minim_cdr(expr);
+        goto sequence;
+    }
+    if (x == minim_sym_let_values || x == minim_sym_letrec_values) {
+        frame = minim_env_frame(minim_car(minim_cdr(expr)), env);
+        if (x == minim_sym_letrec_values)
+            env = frame;
+        x = minim_cdr(expr);
+        goto let_values;
+    }
+    // set!, define, and define-values: evaluate the value, then bind it.
+    k = make_frame((x == minim_sym_set      ? K_SET
+                    : x == minim_sym_define ? K_DEFINE
+                                            : K_DEFINE_VALUES)
+                       | K_COMPILED,
+                   k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
+    expr = minim_car(minim_cdr(minim_cdr(expr)));
+    goto ceval;
+
 sequence:  // Evaluates the non-empty body `x` in `env`; the last expression is a tail call.
     if (!minim_is_null(minim_cdr(x)))
-        k = make_frame(K_SEQ, k, minim_cdr(x), env, MINIM_NIL);
+        k = make_frame(K_SEQ | (compiled ? K_COMPILED : 0), k, minim_cdr(x), env, MINIM_NIL);
     expr = minim_car(x);
-    goto eval;
+    goto next;
 
 let_values:  // Evaluates the next init of `x`, `(clauses . body)`, in `env`, or else
              // the body in `frame`.
@@ -296,9 +368,9 @@ let_values:  // Evaluates the next init of `x`, `(clauses . body)`, in `env`, or
         x = minim_cdr(x);
         goto sequence;
     }
-    k = make_frame(K_LET_VALUES, k, x, env, frame);
+    k = make_frame(K_LET_VALUES | (compiled ? K_COMPILED : 0), k, x, env, frame);
     expr = minim_car(minim_cdr(minim_car(minim_car(x))));
-    goto eval;
+    goto next;
 
 ret:  // Passes the values being returned to `k`.
     if (minim_is_null(k)) {
@@ -311,6 +383,8 @@ ret:  // Passes the values being returned to `k`.
     x = k;
     k = minim_vector_ref(x, F_NEXT);
     intptr_t kind = minim_fixnum_value(minim_vector_ref(x, F_KIND));
+    compiled = (kind & K_COMPILED) != 0;
+    kind &= ~(intptr_t)K_COMPILED;
     if (kind == K_CALL_VALUES || kind == K_DEFINE_VALUES || kind == K_LET_VALUES) {
         if (nvals == 1)
             minim_stack_push(val);  // they take their values from the stack
@@ -326,14 +400,14 @@ ret:  // Passes the values being returned to `k`.
         x = minim_vector_ref(x, F_CODE);
         if (val != MINIM_FALSE) {
             expr = minim_car(x);
-            goto eval;
+            goto next;
         }
         if (minim_is_null(minim_cdr(x))) {
             val = MINIM_VOID;
             goto ret;
         }
         expr = minim_car(minim_cdr(x));
-        goto eval;
+        goto next;
     case K_SEQ:
         env = minim_vector_ref(x, F_ENV);
         x = minim_vector_ref(x, F_CODE);
@@ -384,9 +458,10 @@ ret:  // Passes the values being returned to `k`.
         env = minim_vector_ref(x, F_ENV);
         if (minim_is_pair(minim_vector_ref(x, F_CODE))) {
             minim_obj rest = minim_cdr(minim_vector_ref(x, F_CODE));
-            k = make_frame(K_ARGS, k, rest, env, minim_vector_ref(x, F_BASE));
+            k = make_frame(K_ARGS | (compiled ? K_COMPILED : 0), k, rest, env,
+                           minim_vector_ref(x, F_BASE));
             expr = minim_car(minim_vector_ref(x, F_CODE));
-            goto eval;
+            goto next;
         }
         base = (size_t)minim_fixnum_value(minim_vector_ref(x, F_BASE));
         goto apply;
@@ -459,12 +534,14 @@ apply:  // Applies the procedure at `base` to the values above it.
                 k = make_frame(K_TOPLEVEL, k, x, MINIM_NIL, MINIM_NIL);
                 goto ret;
             }
-            if (minim_primitive_fn(x) == minim_prim_eval_expanded) {
-                // Evaluates the core form globally, in tail position.
+            if (minim_primitive_fn(x) == minim_prim_eval_expanded
+                || minim_primitive_fn(x) == minim_prim_eval_compiled) {
+                // Evaluates the core, or simplified, form globally, in tail position.
+                compiled = minim_primitive_fn(x) == minim_prim_eval_compiled;
                 expr = *minim_stack_at(base + 1);
                 minim_stack_pop_to(base);
                 env = MINIM_NIL;
-                goto eval;
+                goto next;
             }
             val = minim_primitive_fn(x)(minim_stack_at(base + 1), n);
             minim_stack_pop_to(base);
@@ -486,10 +563,15 @@ apply:  // Applies the procedure at `base` to the values above it.
         if (!minim_is_closure(x))
             minim_error("not a procedure", x);
 
-        expr = clause_for(x, n);  // rooted while the frame is made
+        compiled = minim_car(minim_closure_code(x)) == minim_sym_clambda;
+        expr = compiled ? compiled_clause_for(x, n) : clause_for(x, n);  // rooted
         env = minim_env_extend(minim_car(expr), minim_stack_at(base + 1), n,
                                minim_closure_env(x));
         minim_stack_pop_to(base);
+        if (compiled) {
+            expr = compiled_clause_body(expr);
+            goto ceval;
+        }
         x = minim_cdr(expr);
         goto sequence;
     }
@@ -507,9 +589,14 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
                 minim_obj a = *minim_stack_at(h - 1);
                 val = minim_cons(a, val);
             }
-            expr = clause_for(x, total);
+            compiled = minim_car(minim_closure_code(x)) == minim_sym_clambda;
+            expr = compiled ? compiled_clause_for(x, total) : clause_for(x, total);
             env = minim_env_extend_list(minim_car(expr), val, minim_closure_env(x));
             minim_stack_pop_to(base);
+            if (compiled) {
+                expr = compiled_clause_body(expr);
+                goto ceval;
+            }
             x = minim_cdr(expr);
             goto sequence;
         }
@@ -520,7 +607,8 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
         minim_prim_fn fn = minim_primitive_fn(x);
         if (fn == minim_prim_apply || fn == minim_prim_values
             || fn == minim_prim_call_with_values || fn == minim_prim_call_cc
-            || fn == minim_prim_load || fn == minim_prim_eval_expanded)
+            || fn == minim_prim_load || fn == minim_prim_eval_expanded
+            || fn == minim_prim_eval_compiled)
             minim_error("too many arguments", minim_fixnum((intptr_t)total));
         if (!primitive_accepts(x, total))
             minim_error("arity mismatch", x);

@@ -21,9 +21,8 @@ Not features, but needed as programs grow.
 - Done: local frames are vectors, one allocation each, looked up by name
   (`docs/design/eval.md`).
 - Done: benchmarks, in `bench/` (`docs/design/testing.md`).
-- Lexical addresses: a pass after expansion resolves each local variable to
-  (frames up, slot), so a lookup is a few loads instead of a search by name
-  (`docs/todos/compile.md`).
+- A compiler: local variables by position, flat closures, and eventually
+  bytecode (`compiler.md`).
 - Done: top-level environments' bindings on symbols' property lists
   (`docs/design/macros.md`).
 - A weak symbol table, so unused symbols are collected, as Chez does: those
@@ -65,13 +64,13 @@ Not in R7RS-small; in R7RS-large and SRFIs.
 
 ## Out of scope for now
 
-Threads, a foreign function interface, a native or bytecode compiler, and
-Unicode normalization.
+Threads, a foreign function interface, a native compiler, and Unicode
+normalization.
 
 Unchecked primitives, as Chez's `#3%car`: a type check is a small part of an
 interpreted call, and unchecked access gives up memory safety.  Revisit with
-a compiler, through declared signatures that let it drop checks it proves
-unneeded.
+the compiler (`compiler.md`), through declared signatures that let it drop
+checks it proves unneeded.
 
 ## Open items
 

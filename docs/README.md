@@ -6,5 +6,7 @@
     compliance, and its standard libraries' coverage.
   - [Beyond R7RS-small](roadmaps/beyond-r7rs.md): the runtime, tooling, and
     extensions R7RS-small doesn't require.
+  - [The compiler](roadmaps/compiler.md): from evaluating expanded core forms
+    to a compiler in Scheme, in small passes, and eventually bytecode.
 - `todos/`: the implementation plan for each milestone in progress, retired
   into `design/` when it is done.

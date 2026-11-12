@@ -18,6 +18,12 @@ extern minim_obj minim_sym_case_lambda;
 /** The symbol `define`. */
 extern minim_obj minim_sym_define;
 
+/** The symbol `call`, an application in the simplified core. */
+extern minim_obj minim_sym_call;
+
+/** The symbol `clambda`, a `lambda` in the simplified core. */
+extern minim_obj minim_sym_clambda;
+
 /** The symbol `define-values`. */
 extern minim_obj minim_sym_define_values;
 
