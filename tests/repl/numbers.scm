@@ -246,3 +246,12 @@
 (asin 2)
 (acos -2)
 (exp 'a)
+
+; Fractions: an exact number is an integer, over 1; a flonum a dyadic rational.
+(list (numerator 6) (denominator 6) (numerator 5.5) (denominator 5.5)
+      (numerator 5.0) (denominator 5.0) (numerator -0.75) (denominator -0.75))
+(list (rationalize 3 1) (rationalize .3 .1) (rationalize 5 0) (rationalize -3 1)
+      (rationalize 3 -1) (rationalize +inf.0 3) (rationalize 3 +inf.0))
+(numerator +inf.0)
+(denominator 'a)
+(rationalize 'a 1)

@@ -1,6 +1,6 @@
 ;;; Numbers (R7RS 6.2.6): the tests and procedures built on arithmetic and
-;;; comparison, integer division, powers and roots, and R5RS's names for
-;;; `inexact` and `exact`.
+;;; comparison, integer division, powers and roots, fractions, and R5RS's
+;;; names for `inexact` and `exact`.
 
 (define (zero? z)
   (%check number? z "zero?: not a number")
@@ -160,3 +160,39 @@
     (cond ((and (> s 0) (> s (quotient k s))) (loop (- s 1)))
           ((<= (+ s 1) (quotient k (+ s 1))) (loop (+ s 1)))
           (else (values s (- k (* s s)))))))
+
+;;; Fractions.  Without rationals, an exact number is an integer; a flonum is
+;;; a dyadic rational.
+
+;; The numerator and denominator of the rational `q`, as a pair, of its
+;; exactness: a flonum doubled until integral, which multiplying by 2 does
+;; exactly, over 2 to the number of doublings.  Raises `msg` otherwise.
+(define (%fraction q msg)
+  (%check rational? q msg)
+  (let loop ((n q) (d (if (exact? q) 1 1.0)))
+    (if (integer? n)
+        (cons n d)
+        (loop (* n 2) (* d 2)))))
+
+(define (numerator q)
+  (car (%fraction q "numerator: not a rational")))
+
+(define (denominator q)
+  (cdr (%fraction q "denominator: not a rational")))
+
+;; The simplest rational within `y` of `x` (R7RS 6.2.6), by the recursion on
+;; `floor` of R4RS's reference implementation; inexact if either is.
+(define (rationalize x y)
+  (define (simplest lo hi)
+    (cond ((> lo 0) (simplest-positive lo hi))
+          ((< hi 0) (- (simplest-positive (- hi) (- lo))))
+          ((and (exact? lo) (exact? hi)) 0)
+          (else 0.0)))
+  (define (simplest-positive lo hi)  ; 0 < lo <= hi
+    (let ((fl (floor lo)))
+      (cond ((= fl lo) fl)
+            ((< fl (floor hi)) (+ fl 1))
+            (else (+ fl (/ 1 (simplest-positive (/ 1 (- hi fl)) (/ 1 (- lo fl)))))))))
+  (%check real? x "rationalize: not a real number")
+  (%check real? y "rationalize: not a real number")
+  (simplest (- x (abs y)) (+ x (abs y))))

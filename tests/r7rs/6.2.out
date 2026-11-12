@@ -27,13 +27,8 @@ ERROR 917 ("unbound variable" 1/3)
 READ-ERROR 922 ("fixnum out of range" "4611686018427387904")
 READ-ERROR 923 ("fixnum out of range" "4611686018427387904")
 READ-ERROR 924 ("fixnum out of range" "-4611686018427387904")
-FAIL 959 (numerator (/ 6 4)) raised ("unbound variable" numerator)
-FAIL 960 (denominator (/ 6 4)) raised ("unbound variable" denominator)
-FAIL 961 (denominator (inexact (/ 6 4))) raised ("unbound variable" denominator)
-FAIL 962 (numerator 5.5) raised ("unbound variable" numerator)
-FAIL 963 (denominator 5.5) raised ("unbound variable" denominator)
-FAIL 964 (numerator 5.0) raised ("unbound variable" numerator)
-FAIL 965 (denominator 5.0) raised ("unbound variable" denominator)
+FAIL 959 (numerator (/ 6 4)) => 3.0
+FAIL 960 (denominator (/ 6 4)) => 2.0
 FAIL 977 (round 7/2) raised ("unbound variable" 7/2)
 FAIL 979 (round 7/10) raised ("unbound variable" 7/10)
 FAIL 980 (round -7/2) raised ("unbound variable" -7/2)
@@ -63,4 +58,4 @@ FAIL 1046 (real-part 1+2i) raised ("unbound variable" real-part)
 FAIL 1048 (imag-part 1+2i) raised ("unbound variable" imag-part)
 FAIL 1050 (magnitude 1+2i) raised ("unbound variable" magnitude)
 FAIL 1052 (angle 1+2i) raised ("unbound variable" angle)
-6.2 Numbers: 154 passed, 48 failed, 17 errors
+6.2 Numbers: 159 passed, 43 failed, 17 errors

@@ -47,3 +47,6 @@ error: log: no real result: -1
 error: asin: no real result: 2
 error: acos: no real result: -2
 error: exp: not a number: a
+error: numerator: not a rational: +inf.0
+error: denominator: not a rational: a
+error: rationalize: not a real number: a

@@ -196,6 +196,15 @@ Tests: `tests/repl/numbers.scm`: `numerator` and `denominator` of 6, 5.5,
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'numbers|boot|r7rs'
 ```
 
+**Done.**  `numerator` and `denominator` share `%fraction`, which doubles a
+flonum until it is integral, exactly, as doubling only moves the exponent.
+`rationalize` is R4RS's reference recursion on `floor`, taking `|y|`;
+with exact integer arguments the interval's ends are integers, so it
+returns without recursing, and stays exact.  `(rationalize +inf.0 3)` is
++inf.0 and `(rationalize 3 +inf.0)` 0.0.  The 6.2 report: 154 to 159
+passed; `(numerator (/ 6 4))` and `(denominator (/ 6 4))` still fail, as
+`(/ 6 4)` is 1.5, not 3/2, without rationals.
+
 ### After the last phase
 
 Sync the docs: `primitives.md` (Numbers: each procedure; integer
