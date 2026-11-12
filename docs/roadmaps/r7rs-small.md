@@ -24,25 +24,25 @@ Missing, roughly in order of how much it limits writing programs:
 
 | Gap | Example |
 |---|---|
-| Numbers | bignums, rationals, the math functions (`sqrt`, `expt`, `exp`, ...), and integer division (`modulo`, `floor/`, ...) |
+| Numbers | bignums and rationals: exact integers stop at 2^60, and `(/ 6 4)` is 1.5 |
 
 **Coverage:** the names of each standard library (R7RS Appendix A) Minim
 provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 223 | 238 | |
+| `(scheme base)` | 238 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 22 | 22 | |
 | `(scheme complex)` | 0 | 6 | not defined |
 | `(scheme cxr)` | 24 | 24 | |
 | `(scheme eval)` | 2 | 2 | |
 | `(scheme file)` | 10 | 10 | |
-| `(scheme inexact)` | 3 | 12 | `finite?`, `infinite?`, `nan?` |
+| `(scheme inexact)` | 12 | 12 | |
 | `(scheme lazy)` | 5 | 5 | |
 | `(scheme load)` | 1 | 1 | |
 | `(scheme process-context)` | 5 | 5 | |
-| `(scheme r5rs)` | 193 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
+| `(scheme r5rs)` | 215 | 217 | plus R5RS's auxiliary syntax, which R7RS's list omits |
 | `(scheme read)` | 1 | 1 | |
 | `(scheme repl)` | 1 | 1 | |
 | `(scheme time)` | 3 | 3 | |
@@ -170,8 +170,8 @@ libraries exist.
 - Done: flonums, boxed doubles on primary tag `010`: reading, printing
   (shortest round-trip), generic arithmetic and comparison, `eqv?`, and
   `exact` / `inexact` (`docs/design/primitives.md`).
-- The math functions of `(scheme base)` and `(scheme inexact)`, and integer
-  division (`modulo`, `floor/`, `truncate/`, `exact-integer-sqrt`, ...).
+- Done: the math functions of `(scheme base)` and `(scheme inexact)`, and
+  integer division (`docs/design/primitives.md`, `docs/design/prelude.md`).
 - Bignums: typed objects holding digits.  Fixnum overflow promotes instead of
   raising.
 - Rationals: optional, after bignums.
@@ -231,26 +231,26 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | Section | Passed | Failed | Errors |
 |---|---|---|---|
 | 4.1 Primitive expression types | 27 | 0 | 0 |
-| 4.2 Derived expression types | 61 | 4 | 6 |
+| 4.2 Derived expression types | 64 | 4 | 5 |
 | 4.3 Macros | 26 | 0 | 0 |
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
-| 6.2 Numbers | 110 | 92 | 17 |
+| 6.2 Numbers | 159 | 43 | 17 |
 | 6.3 Booleans | 18 | 0 | 0 |
 | 6.4 Lists | 65 | 0 | 0 |
 | 6.5 Symbols | 17 | 0 | 0 |
 | 6.6 Characters | 79 | 0 | 0 |
 | 6.7 Strings | 130 | 0 | 0 |
-| 6.8 Vectors | 42 | 1 | 0 |
+| 6.8 Vectors | 43 | 0 | 0 |
 | 6.9 Bytevectors | 39 | 0 | 0 |
-| 6.10 Control Features | 31 | 3 | 0 |
-| 6.11 Exceptions | 29 | 1 | 0 |
-| 6.12 Environments and evaluation | 1 | 3 | 0 |
+| 6.10 Control Features | 34 | 0 | 0 |
+| 6.11 Exceptions | 30 | 0 | 0 |
+| 6.12 Environments and evaluation | 4 | 0 | 0 |
 | 6.13 Input and output | 63 | 0 | 0 |
 | Read syntax | 92 | 1 | 0 |
 | Numeric syntax | 124 | 17 | 37 |
 | 6.14 System interface | 13 | 0 | 0 |
-| **Total** | 1007 | 122 | 60 |
+| **Total** | 1067 | 65 | 59 |
 
 The reports name each failing test by line; the gaps are those of the
 coverage table and of milestones 6 to 9.  Update the table with the reports.
