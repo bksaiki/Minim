@@ -154,3 +154,7 @@
 
 (define (%simplified? x)
   (%in-language? x #t))
+
+;; The compiler the evaluator applies to each top-level form, or #f to run the
+;; core uncompiled.  Defined last, so the prelude's own forms run uncompiled.
+(define %compile (make-parameter %compile-form))

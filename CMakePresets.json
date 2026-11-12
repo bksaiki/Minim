@@ -38,6 +38,14 @@
       "configurePreset": "dev",
       "output": { "outputOnFailure": true },
       "filter": { "include": { "label": "stress" } }
+    },
+    {
+      "name": "interpreted",
+      "displayName": "Tests with forms run uncompiled",
+      "configurePreset": "dev",
+      "output": { "outputOnFailure": true },
+      "environment": { "MINIM_TEST_INTERPRET": "1" },
+      "filter": { "exclude": { "label": "stress|compiled-only" } }
     }
   ]
 }

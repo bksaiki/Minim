@@ -1,2 +1,2 @@
 minim: unknown option --foo
-usage: minim [--program] [file [arg ...]]
+usage: minim [--program] [--interpret] [file [arg ...]]

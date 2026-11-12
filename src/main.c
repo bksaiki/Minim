@@ -19,15 +19,16 @@
 #include "eval.h"
 #include "minim.h"
 
-static const char usage[] = "usage: minim [--program] [file [arg ...]]\n";
+static const char usage[] = "usage: minim [--program] [--interpret] [file [arg ...]]\n";
 
 static const char help[] =
     "Runs file as a script in the interaction environment, or else a REPL.\n"
     "Arguments after file are its own, for command-line.\n"
     "\n"
-    "  --program  run file as an R7RS program, which sees only what it imports\n"
-    "  --help     print this message\n"
-    "  --version  print the version\n";
+    "  --program    run file as an R7RS program, which sees only what it imports\n"
+    "  --interpret  run forms as expanded, without compiling them\n"
+    "  --help       print this message\n"
+    "  --version    print the version\n";
 
 // The next datum from the standard input port, or the eof object once closed.
 static minim_obj read_stdin(void *arg) {
@@ -57,6 +58,16 @@ static minim_obj load(void *path) {
 // Runs the program in the file `path`, expanded by `%expand-program`.
 static minim_obj run_program(void *path) {
     return minim_eval_expanded(minim_eval_expanded(call_form("%expand-program", path)));
+}
+
+// Sets `%compile` to #f, so forms run without compiling.
+static void interpret(void) {
+    minim_obj form = minim_cons(MINIM_FALSE, MINIM_NIL);
+    MINIM_FRAME(&form);
+    minim_obj sym = minim_intern_cstr("%compile");
+    form = minim_cons(sym, form);
+    minim_eval_expanded(form);
+    MINIM_RETURN_VOID;
 }
 
 // Runs the file `path` with `run`; returns the exit status.
@@ -108,6 +119,7 @@ static int usage_error(const char *message, const char *arg) {
 // Options come before the file; the arguments after it are the file's.
 int main(int argc, char **argv) {
     bool program = false;
+    bool interpreted = false;
     int i = 1;
     for (; i < argc && argv[i][0] == '-' && argv[i][1] != '\0'; i++) {
         const char *arg = argv[i];
@@ -119,6 +131,8 @@ int main(int argc, char **argv) {
             return 0;
         } else if (strcmp(arg, "--program") == 0) {
             program = true;
+        } else if (strcmp(arg, "--interpret") == 0) {
+            interpreted = true;
         } else {
             return usage_error("unknown option", arg);
         }
@@ -128,6 +142,8 @@ int main(int argc, char **argv) {
         return usage_error("missing file after", "--program");
 
     minim_init();
+    if (interpreted)
+        interpret();
     if (file != NULL)
         minim_set_command_line(argc - i, (const char *const *)argv + i);
     int status = file == NULL ? run_repl() : run_file(program ? run_program : load, file);

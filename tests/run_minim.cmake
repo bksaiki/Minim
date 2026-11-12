@@ -1,11 +1,15 @@
 # Runs MINIM from DIR with ARGS (separated by `|`) and INPUT on stdin, both
-# optional.  Checks the exit status against STATUS (default 0), stdout against
-# EXPECTED, and stderr against EXPECTED_ERR if that file exists.  With UPDATE,
-# writes stdout to EXPECTED instead of checking it.
+# optional, with `--interpret` first if the environment sets
+# MINIM_TEST_INTERPRET.  Checks the exit status against STATUS (default 0),
+# stdout against EXPECTED, and stderr against EXPECTED_ERR if that file exists.
+# With UPDATE, writes stdout to EXPECTED instead of checking it.
 if(NOT DEFINED STATUS)
     set(STATUS 0)
 endif()
 string(REPLACE "|" ";" args "${ARGS}")
+if(DEFINED ENV{MINIM_TEST_INTERPRET})
+    list(PREPEND args --interpret)
+endif()
 if(DEFINED INPUT)
     set(input INPUT_FILE ${INPUT})
 endif()

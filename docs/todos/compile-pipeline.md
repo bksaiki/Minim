@@ -208,6 +208,29 @@ slow; the others should hold.
 cmake --preset dev && cmake --build --preset dev && ctest --preset dev && ctest --preset interpreted
 ```
 
+**Done.**  A `compile` label serves the three entries, the return from
+`%expand`, `minim_eval_expanded`, and `%eval-expanded`: it calls
+`(%compile)` under a `K_COMPILER` frame holding the form, whose return runs
+the form unsimplified if the value is `#f`, or applies the value under a
+`K_COMPILE` frame, whose return runs the result in `ceval`.  `%compile` is
+`(make-parameter %compile-form)`, the last form of `compile.scm`.  `main.c`
+evaluates `(%compile #f)` after `minim_init` for `--interpret`.  The
+script test `--interpret` and `--program` combined.  `repl_compile-hook`
+carries the label `compiled-only`, which the `interpreted` preset excludes
+with `stress`; run with `MINIM_TEST_INTERPRET=1` by hand, it fails, so the
+preset does pass `--interpret`.  `tests/repl/parameters.scm` printed a
+closure's code, which now depends on the mode, so it checks `(pair?
+(%closure-code ...))` instead; `help`, `usage-option`, and `usage-program`
+gained the option.  Results: `dev` 113 passed, `interpreted` 112, `stress`
+81.
+
+Measurements, release, a loaded machine: `bench/run.sh`, 11 runs, against
+`main`: expand 0.415 to 0.497 s median, 0.361 to 0.482 minimum; the rest
+within noise.  The same build with and without `--interpret`, best of 7:
+expand 0.502 compiled, 0.400 interpreted, so the interpreted compiler costs
+about a quarter of `expand`'s time; fib 0.470 and 0.475, let 0.475 and
+0.486, unchanged, as nothing yet runs faster compiled.
+
 ### After the last phase
 
 Sync the docs: `eval.md` (the two languages, the `compiled` register,

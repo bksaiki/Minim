@@ -27,7 +27,7 @@ calls
 (parameter? car)
 (parameter? 1)
 (eq? (%closure-code p) (%closure-code q))
-(%closure-code (lambda (x) x))
+(pair? (%closure-code (lambda (x) x)))
 (%closure-code car)
 
 ; parameterize binds for the body's dynamic extent.

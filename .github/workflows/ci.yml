@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        tests: [dev, stress]
+        tests: [dev, stress, interpreted]
     steps:
       - uses: actions/checkout@v7
       - run: cmake --preset dev -DCMAKE_COMPILE_WARNING_AS_ERROR=ON

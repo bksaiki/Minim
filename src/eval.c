@@ -34,6 +34,8 @@ enum {
     K_CALL_VALUES,    // unused
     K_DEFINE_VALUES,  // formals
     K_LET_VALUES,     // `(clauses . body)`, the first clause's init being evaluated
+    K_COMPILER,       // the core form to compile, given `(%compile)`'s value
+    K_COMPILE,        // unused
     K_COMPILED = 0x100,
 };
 
@@ -216,12 +218,25 @@ toplevel:  // Expands `expr` with `%expand`, if `expand` and bound, then evaluat
     env = MINIM_NIL;
     compiled = false;
     if (!expand || minim_symbol_value(minim_sym_expand) == MINIM_UNBOUND)
-        goto eval;
+        goto compile;
     k = make_frame(K_EXPAND, k, MINIM_NIL, MINIM_NIL, MINIM_NIL);
     minim_stack_reserve(2);
     base = minim_stack_height();
     minim_stack_push(minim_symbol_value(minim_sym_expand));
     minim_stack_push(expr);
+    goto apply;
+
+compile:  // Evaluates the core form `expr` globally: compiled by the value of
+          // `(%compile)`, unless it is #f or `%compile` unbound.
+    env = MINIM_NIL;
+    compiled = false;
+    x = minim_symbol_value(minim_sym_compile);
+    if (x == MINIM_UNBOUND)
+        goto eval;
+    k = make_frame(K_COMPILER, k, expr, MINIM_NIL, MINIM_NIL);
+    minim_stack_reserve(1);
+    base = minim_stack_height();
+    minim_stack_push(x);
     goto apply;
 
 next:  // Evaluates `expr`, in the language `compiled` says, in `env`.
@@ -422,8 +437,23 @@ ret:  // Passes the values being returned to `k`.
         goto ret;
     case K_EXPAND:
         expr = val;
+        goto compile;
+    case K_COMPILER:  // `val` is the compiler, or #f
+        expr = minim_vector_ref(x, F_CODE);
         env = MINIM_NIL;
-        goto eval;
+        if (val == MINIM_FALSE)
+            goto eval;
+        k = make_frame(K_COMPILE, k, MINIM_NIL, MINIM_NIL, MINIM_NIL);
+        minim_stack_reserve(2);
+        base = minim_stack_height();
+        minim_stack_push(val);
+        minim_stack_push(expr);
+        goto apply;
+    case K_COMPILE:
+        expr = val;
+        env = MINIM_NIL;
+        compiled = true;
+        goto ceval;
     case K_TOPLEVEL:
         x = minim_vector_ref(x, F_CODE);
         if (minim_is_null(x)) {
@@ -536,12 +566,15 @@ apply:  // Applies the procedure at `base` to the values above it.
             }
             if (minim_primitive_fn(x) == minim_prim_eval_expanded
                 || minim_primitive_fn(x) == minim_prim_eval_compiled) {
-                // Evaluates the core, or simplified, form globally, in tail position.
+                // Evaluates the core form, compiled, or the simplified form, globally,
+                // in tail position.
                 compiled = minim_primitive_fn(x) == minim_prim_eval_compiled;
                 expr = *minim_stack_at(base + 1);
                 minim_stack_pop_to(base);
                 env = MINIM_NIL;
-                goto next;
+                if (!compiled)
+                    goto compile;
+                goto ceval;
             }
             val = minim_primitive_fn(x)(minim_stack_at(base + 1), n);
             minim_stack_pop_to(base);

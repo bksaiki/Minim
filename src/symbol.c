@@ -59,6 +59,7 @@ minim_obj minim_sym_define_values;
 minim_obj minim_sym_expand;
 minim_obj minim_sym_call;
 minim_obj minim_sym_clambda;
+minim_obj minim_sym_compile;
 minim_obj minim_sym_if;
 minim_obj minim_sym_lambda;
 minim_obj minim_sym_let_values;
@@ -85,6 +86,7 @@ void minim_symbol_init(void) {
     intern_global(&minim_sym_call, "call");
     intern_global(&minim_sym_case_lambda, "case-lambda");
     intern_global(&minim_sym_clambda, "clambda");
+    intern_global(&minim_sym_compile, "%compile");
     intern_global(&minim_sym_define, "define");
     intern_global(&minim_sym_define_values, "define-values");
     intern_global(&minim_sym_expand, "%expand");
