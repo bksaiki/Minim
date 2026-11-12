@@ -7,7 +7,7 @@
    bytevector-length bytevector-u8-ref bytevector-u8-set! bytevector? caar cadr
    call-with-current-continuation call-with-port call-with-values call/cc car case cdar cddr
    cdr ceiling char->integer char-ready? char<=? char<? char=? char>=? char>? char?
-   close-input-port close-output-port close-port complex? cond cons current-error-port
+   close-input-port close-output-port close-port complex? cond cond-expand cons current-error-port
    current-input-port current-output-port define define-record-type define-syntax
    define-values do dynamic-wind else eof-object eof-object? eq? equal? eqv? error
    error-object-irritants error-object-message error-object? even? exact exact-integer?

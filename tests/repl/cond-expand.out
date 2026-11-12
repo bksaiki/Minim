@@ -3,3 +3,18 @@
 (#t #t)
 #t
 #f
+identifier
+and
+empty-and
+or
+empty-or
+not
+else
+first
+defined
+found
+missing
+(1 2)
+6
+hygienic
+minim

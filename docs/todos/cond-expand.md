@@ -125,6 +125,17 @@ no clause matching.
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'cond-expand|libraries|r7rs'
 ```
 
+**Done.**  `%cond-expand-clause` picks the clause; `%requirement?` tests a
+requirement after `%strip`, as it is data, while the clauses' bodies, code,
+keep their aliases.  `else` and the requirement keywords are matched by
+name; `else` anywhere but last is `bad syntax`, as is an improper form or
+clause.  The transformer is bound with `%top-bind!` in `libraries.scm`,
+returning `(begin form ...)` with `begin` a fresh alias in the system
+environment.  `%load-library` keeps its behavior over the new
+`%library-file-path`.  Tests as planned; `(library (lib point))` is true
+without printing the line that library prints when it loads.  No R7RS
+report changed: Chibi's suite has no `cond-expand` tests.
+
 ### Phase 3 - `include`, `include-ci`, and `include-library-declarations`
 
 - `src/read.c`, `src/system.c`: `%read-file`'s fold argument.

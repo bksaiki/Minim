@@ -50,20 +50,25 @@
         (string-append path ".sld")
         (loop (cdr parts) (string-append path "/" (part (car parts)))))))
 
-;; Loads the file for the library `name` from the first directory that has
-;; it: the current one, then those `MINIM_LIBRARY_PATH` lists, colon-separated.
-(define (%load-library name)
+;; The path of the file for the library `name` in the first directory that has
+;; it: the current one, then those `MINIM_LIBRARY_PATH` lists, colon-separated;
+;; #f if none does.
+(define (%library-file-path name)
   (let ((file (%library-file name))
         (var (get-environment-variable "MINIM_LIBRARY_PATH")))
     (let loop ((dirs (cons "" (if var (%split var #\:) '()))))
-      (unless (null? dirs)
-        (let ((path (%join (car dirs) file))
-              (outer %library-dir))
-          (if (file-exists? path)
-              (dynamic-wind (lambda () (set! %library-dir (%path-dir path)))
-                            (lambda () (load path))
-                            (lambda () (set! %library-dir outer)))
-              (loop (cdr dirs))))))))
+      (cond ((null? dirs) #f)
+            ((file-exists? (%join (car dirs) file)) (%join (car dirs) file))
+            (else (loop (cdr dirs)))))))
+
+;; Loads the file for the library `name`, if there is one.
+(define (%load-library name)
+  (let ((path (%library-file-path name))
+        (outer %library-dir))
+    (when path
+      (dynamic-wind (lambda () (set! %library-dir (%path-dir path)))
+                    (lambda () (load path))
+                    (lambda () (set! %library-dir outer))))))
 
 ;; The exports of the library `name`, loading its file if it isn't defined.
 (define (%library-exports name)
@@ -140,6 +145,45 @@
 (define (%expand-library-body forms top)
   (cons 'begin (%expand-top-forms forms top #f)))
 
+;; Whether the `cond-expand` requirement `req`, stripped, holds (R7RS 4.2.1):
+;; a feature identifier, `(library name)`, which doesn't load the library,
+;; or `and`, `or`, or `not` of requirements.
+(define (%requirement? req)
+  (define (all? reqs)
+    (or (null? reqs) (and (%requirement? (car reqs)) (all? (cdr reqs)))))
+  (define (any? reqs)
+    (and (pair? reqs) (or (%requirement? (car reqs)) (any? (cdr reqs)))))
+  (let ((n (and (pair? req) (%length req 0))))
+    (cond ((symbol? req) (and (memq req (features)) #t))
+          ((not n) (%bad-syntax req))
+          ((eq? (car req) 'and) (all? (cdr req)))
+          ((eq? (car req) 'or) (any? (cdr req)))
+          ((and (eq? (car req) 'not) (= n 2)) (not (%requirement? (cadr req))))
+          ((and (eq? (car req) 'library) (= n 2) (pair? (cadr req)) (%length (cadr req) 0))
+           (and (or (assoc (cadr req) %libraries) (%library-file-path (cadr req))) #t))
+          (else (%bad-syntax req)))))
+
+;; The forms of the first clause of the `cond-expand` form `form` whose
+;; requirement holds, or of its `else` clause, which must be last.
+(define (%cond-expand-clause form)
+  (let loop ((clauses (if (%length form 0) (cdr form) (%bad-syntax form))))
+    (if (null? clauses)
+        (%syntax-error "cond-expand: no matching clause" (list (%strip form)))
+        (let* ((clause (car clauses))
+               (req (if (and (pair? clause) (%length clause 0))
+                        (%strip (car clause))
+                        (%bad-syntax clause))))
+          (cond ((not (eq? req 'else)) (if (%requirement? req) (cdr clause) (loop (cdr clauses))))
+                ((null? (cdr clauses)) (cdr clause))
+                (else (%bad-syntax clause)))))))
+
+;; `(cond-expand clause ...)`: the chosen clause's forms in a `begin`, the
+;; system's, so it splices definitions.
+(%top-bind! %system-env
+            'cond-expand
+            (lambda (form env)
+              (cons (%make-alias 'begin %system-env) (%cond-expand-clause form))))
+
 ;; The (external name . binding) an export spec of the library environment `top`
 ;; denotes: `name`, or `(rename name external)`.
 (define (%export spec top)
@@ -166,6 +210,7 @@
               ((import) (%import! top (cdr d)) (loop (cdr decls) specs body))
               ((begin) (loop (cdr decls) specs (append body (cdr d))))
               ((include) (loop (cdr decls) specs (append body (%include (cdr d)))))
+              ((cond-expand) (loop (append (%cond-expand-clause d) (cdr decls)) specs body))
               (else (%bad-syntax d))))))))
 
 ;; The core forms of the R7RS program in the file `path` (R7RS 5.1): its
