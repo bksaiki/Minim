@@ -9,6 +9,7 @@
 #include "system.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -183,6 +184,55 @@ static minim_obj prim_command_line(minim_obj *args, size_t n) {
     MINIM_RETURN(lst);
 }
 
+// The feature identifiers `cond-expand` treats as true (R7RS Appendix B).
+static const char *const features[] = {
+    "r7rs",
+    "ieee-float",
+    "full-unicode",
+#ifdef _WIN32
+    "windows",
+#else
+    "posix",
+    "unix",
+#endif
+#if defined(__gnu_linux__)
+    "gnu-linux",
+#elif defined(__APPLE__)
+    "darwin",
+#elif defined(__FreeBSD__)
+    "freebsd",
+    "bsd",
+#endif
+#if defined(__x86_64__) || defined(_M_X64)
+    "x86-64",
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    "aarch64",
+#endif
+#if defined(__LP64__) || defined(_LP64)
+    "lp64",
+#elif UINTPTR_MAX == UINT32_MAX
+    "ilp32",
+#endif
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    "big-endian",
+#else
+    "little-endian",
+#endif
+    "minim",
+};
+
+static minim_obj prim_features(minim_obj *args, size_t n) {
+    MINIM_UNUSED(args, n);
+    minim_obj lst = MINIM_NIL;
+    minim_obj sym = MINIM_NIL;
+    MINIM_FRAME(&lst, &sym);
+    for (size_t i = sizeof(features) / sizeof(*features); i > 0; i--) {
+        sym = minim_intern_cstr(features[i - 1]);
+        lst = minim_cons(sym, lst);
+    }
+    MINIM_RETURN(lst);
+}
+
 // The value of the environment variable `args[0]`, or #f if it is unset.
 static minim_obj prim_get_environment_variable(minim_obj *args, size_t n) {
     MINIM_UNUSED(n);
@@ -219,20 +269,21 @@ static minim_obj prim_get_environment_variables(minim_obj *args, size_t n) {
 }
 
 // The forms of the file `args[0]`, as `load` reads them.
+// The forms of the file `args[0]`, folded if `args[1]` is given and true.
 static minim_obj prim_read_file(minim_obj *args, size_t n) {
-    MINIM_UNUSED(n);
     check(minim_is_string(args[0]), "%read-file: not a string", args[0]);
-    return minim_read_file(args[0]);
+    return minim_read_file(args[0], n == 2 && args[1] != MINIM_FALSE);
 }
 
 const minim_prim_def minim_system_prims[] = {
     {"file-exists?", prim_file_exists, 1, 1},
     {"delete-file", prim_delete_file, 1, 1},
     {"command-line", prim_command_line, 0, 0},
+    {"features", prim_features, 0, 0},
     {"%exit", prim_exit, 1, 1},
     {"get-environment-variable", prim_get_environment_variable, 1, 1},
     {"get-environment-variables", prim_get_environment_variables, 0, 0},
-    {"%read-file", prim_read_file, 1, 1},
+    {"%read-file", prim_read_file, 1, 2},
     {"current-second", prim_current_second, 0, 0},
     {"current-jiffy", prim_current_jiffy, 0, 0},
     {"jiffies-per-second", prim_jiffies_per_second, 0, 0},

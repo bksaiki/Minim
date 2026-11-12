@@ -454,7 +454,7 @@ apply:  // Applies the procedure at `base` to the values above it.
                 // Runs the file's forms as top-level forms, then returns void.
                 if (!minim_is_string(*minim_stack_at(base + 1)))
                     minim_error("load: not a string", *minim_stack_at(base + 1));
-                x = minim_read_file(*minim_stack_at(base + 1));
+                x = minim_read_file(*minim_stack_at(base + 1), false);
                 minim_stack_pop_to(base);
                 k = make_frame(K_TOPLEVEL, k, x, MINIM_NIL, MINIM_NIL);
                 goto ret;

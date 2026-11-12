@@ -7,13 +7,13 @@
    bytevector-length bytevector-u8-ref bytevector-u8-set! bytevector? caar cadr
    call-with-current-continuation call-with-port call-with-values call/cc car case cdar cddr
    cdr ceiling char->integer char-ready? char<=? char<? char=? char>=? char>? char?
-   close-input-port close-output-port close-port complex? cond cons current-error-port
+   close-input-port close-output-port close-port complex? cond cond-expand cons current-error-port
    current-input-port current-output-port define define-record-type define-syntax
    define-values do dynamic-wind else eof-object eof-object? eq? equal? eqv? error
    error-object-irritants error-object-message error-object? even? exact exact-integer?
-   exact? file-error? floor flush-output-port for-each get-output-bytevector
-   get-output-string guard if inexact inexact? input-port-open? input-port? integer->char
-   integer? lambda length let let* let*-values let-syntax let-values letrec letrec*
+   exact? features file-error? floor flush-output-port for-each get-output-bytevector
+   get-output-string guard if include include-ci inexact inexact? input-port-open? input-port?
+   integer->char integer? lambda length let let* let*-values let-syntax let-values letrec letrec*
    letrec-syntax list list->string list->vector list-copy list-ref list-set! list-tail list?
    make-bytevector make-list make-parameter make-string make-vector map max member memq memv
    min negative? newline not null? number->string number? odd? open-input-bytevector

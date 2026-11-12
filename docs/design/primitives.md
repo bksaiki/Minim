@@ -264,7 +264,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 | `(load path)` | runs the forms in the file `path`, relative to the current directory, as top-level forms; void |
 | `(file-exists? path)` | whether the file `path` opens for reading |
 | `(delete-file path)` | deletes the file `path`; a file error if it can't; void |
-| `(%read-file path)` | the forms of the file `path`, as `load` reads them; for `include` |
+| `(%read-file path [fold?])` | the forms of the file `path`, as `load` reads them, or as if after `#!fold-case` if `fold?`; for `include` |
 
 ### System
 
@@ -272,6 +272,7 @@ After Chez Scheme's storage-management procedures; see `gc.md`.
 |---|---|
 | `(get-environment-variable name)` | the value of the environment variable `name`, a string, or `#f` if it is unset |
 | `(get-environment-variables)` | the environment, as a list of `(name . value)` strings |
+| `(features)` | a new list of the feature identifiers `cond-expand` treats as true: `r7rs`, `ieee-float`, `full-unicode`, `minim`, and the platform's from R7RS Appendix B, by the compiler's macros: the OS (`posix` `unix`, `windows`; `gnu-linux`, `darwin`, `freebsd` `bsd`), the CPU (`x86-64`, `aarch64`), `lp64` or `ilp32`, and the byte order |
 | `(command-line)` | the script's or program's path, then its arguments, as strings; `("minim")` at the REPL |
 | `(%exit status)` | shuts the runtime down, flushing and closing file ports, and ends the process with the fixnum `status` |
 | `(current-second)` | seconds since the epoch, a flonum; UTC, which R7RS allows in place of TAI |

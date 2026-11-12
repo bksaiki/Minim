@@ -31,7 +31,7 @@ provides.  Update it as names are added.
 
 | Library | Provided | R7RS | Notes |
 |---|---|---|---|
-| `(scheme base)` | 219 | 238 | |
+| `(scheme base)` | 223 | 238 | |
 | `(scheme case-lambda)` | 1 | 1 | |
 | `(scheme char)` | 22 | 22 | |
 | `(scheme complex)` | 0 | 6 | not defined |
@@ -115,7 +115,8 @@ Depends on 3 (`guard` is a macro).
 
 ### 5. Libraries (M–L) — done
 
-- `define-library`, with `export`, `import`, `begin`, and `include`; `import`
+- `define-library`, with `export`, `import`, `begin`, `include`,
+  `include-ci`, `include-library-declarations`, and `cond-expand`; `import`
   with `only`, `except`, `prefix`, and `rename`; library files, `foo/bar.sld`
   on `MINIM_LIBRARY_PATH`.
 - The standard libraries Minim has names for: `(scheme base)`, `(scheme
@@ -127,7 +128,8 @@ Depends on 3 (`guard` is a macro).
 - The REPL sees `(minim)`, every public name, and no internals; `(minim
   system)` has them all.  Programs, `minim --program`, see only what they
   import (R7RS 5.1).
-- Later: `cond-expand`, `include-ci`, and `include-library-declarations`.
+- Done: `cond-expand`, `include`, and `include-ci` as forms, and
+  `features`.
 
 ### 6. Ports and I/O (M) — done
 
@@ -247,8 +249,8 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | 6.13 Input and output | 63 | 0 | 0 |
 | Read syntax | 92 | 1 | 0 |
 | Numeric syntax | 124 | 17 | 37 |
-| 6.14 System interface | 11 | 2 | 0 |
-| **Total** | 991 | 134 | 63 |
+| 6.14 System interface | 13 | 0 | 0 |
+| **Total** | 1007 | 122 | 60 |
 
 The reports name each failing test by line; the gaps are those of the
 coverage table and of milestones 6 to 9.  Update the table with the reports.

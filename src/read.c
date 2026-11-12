@@ -644,9 +644,10 @@ static minim_obj read_forms(void *port) {
     MINIM_RETURN(head);
 }
 
-minim_obj minim_read_file(minim_obj path) {
+minim_obj minim_read_file(minim_obj path, bool fold) {
     minim_obj port = minim_port_open_file(path, MINIM_PORT_INPUT, "load: cannot open file");
     MINIM_FRAME(&port);
+    minim_port_set_fold_case(port, fold);
     minim_obj forms;
     bool ok = minim_catch(read_forms, &port, &forms);
     minim_port_close(port);

@@ -13,7 +13,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `control.scm` | `call/cc`, `dynamic-wind`, exceptions, `guard`'s procedure, and parameters |
 | `records.scm` | the procedures `define-record-type` binds |
 | `expander.scm` | the expander (`macros.md`) |
-| `libraries.scm` | `define-library`, `import`, library files, and programs |
+| `libraries.scm` | `define-library`, `import`, library files, programs, `cond-expand`, and `include` |
 | `derived.scm` | the derived forms, as macros |
 | `eval.scm` | `eval`, its environments, and `%expand` |
 | `ports.scm` | the current ports, the port procedures with optional ports, and the bulk reads and writes (`ports.md`) |

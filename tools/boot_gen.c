@@ -40,7 +40,7 @@ static minim_obj generate(void *arg) {
 
     for (int i = 0; i < j->nsources; i++) {
         x = minim_string_from_cstr(j->sources[i]);
-        forms = minim_read_file(x);
+        forms = minim_read_file(x, false);
         for (; minim_is_pair(forms); forms = minim_cdr(forms)) {
             // (%boot-form 'form)
             x = minim_cons(minim_car(forms), MINIM_NIL);

@@ -117,9 +117,9 @@ syntax`.
 
 ## `syntax-rules`
 
-The only transformer: `(syntax-rules (literal ...) rule ...)`, or
-`(syntax-rules ellipsis (literal ...) rule ...)` with a custom ellipsis
-(R7RS 4.3.2).  It becomes a procedure from a use and its environment to the
+The only transformer a program can write: `(syntax-rules (literal ...)
+rule ...)`, or `(syntax-rules ellipsis (literal ...) rule ...)` with a
+custom ellipsis (R7RS 4.3.2).  It becomes a procedure from a use and its environment to the
 use's expansion, closed over the definition environment.
 
 **Matching.**  Rules are tried in order, ignoring the keyword position; none
@@ -181,12 +181,33 @@ Malformed forms raise `bad syntax` when expanded, before any of the form
 runs, with the smallest enclosing form as the irritant.  Both they and
 `syntax-error` raise through the primitive `%syntax-error`.
 
+## Transformers in Scheme
+
+A macro's binding is a procedure of the form and its environment, so the
+system binds some directly, with `%top-bind!` in `libraries.scm`, where
+they must consult the platform or read files.  Each expands to the
+system's `begin` around forms, which splices definitions at top level and
+at the start of a body.
+
+- `(cond-expand clause ...)` (R7RS 4.2.1): the forms of the first clause
+  whose requirement holds, or of a last `else` clause; none matching raises
+  `cond-expand: no matching clause`.  A requirement, stripped of aliases, is
+  a feature identifier, in `(features)` (`primitives.md`); `(library
+  name)`, the library defined or its file found, without loading it; or
+  `and`, `or`, or `not` of requirements.
+- `(include file ...)` and `(include-ci file ...)` (R7RS 4.1.7): the files'
+  forms, `include-ci` reading as if after `#!fold-case`.  Paths are relative
+  to the library file's directory while one loads, else to the current
+  directory.
+
 ## Libraries
 
 `(define-library name decl ...)` (R7RS 5.6) makes a library environment.
 Its declarations: `export`, of a name or `(rename name external)`; `import`;
-`begin`; and `include`, of files read relative to the library file's
-directory.  Its body is scanned as a top-level `begin`, every definition
+`begin`; `include` and `include-ci`, of files read relative to the library
+file's directory; and `include-library-declarations` and `cond-expand`,
+whose files' forms, or chosen clause's, are processed as declarations in
+their place.  Its body is scanned as a top-level `begin`, every definition
 bound to a fresh label, except that `import` and `define-library` in it are
 expressions, not declarations.  The form registers the exports, `(name .
 binding)`, in `%libraries`, and expands to its body, which runs in order

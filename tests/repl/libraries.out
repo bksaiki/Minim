@@ -15,6 +15,7 @@ lazy
 (lib point) loaded
 (1 2)
 25
+(loud 2)
 (swapped 2 1)(2.0 1)
 (#t 6 when)
 (#t 1)
