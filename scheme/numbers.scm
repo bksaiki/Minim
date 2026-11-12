@@ -1,5 +1,6 @@
 ;;; Numbers (R7RS 6.2.6): the tests and procedures built on arithmetic and
-;;; comparison, integer division, and R5RS's names for `inexact` and `exact`.
+;;; comparison, integer division, powers and roots, and R5RS's names for
+;;; `inexact` and `exact`.
 
 (define (zero? z)
   (%check number? z "zero?: not a number")
@@ -127,3 +128,35 @@
                   1
                   "lcm: not an integer"
                   ns))
+
+;;; Powers and roots.
+
+(define (square z)
+  (* z z))
+
+;; `b` to the power `e`: by repeated squaring if both are exact, `b` squared
+;; only while bits of `e` remain, so no step overflows unless the result does;
+;; else by `pow`.
+(define (expt b e)
+  (%check number? b "expt: not a number")
+  (%check number? e "expt: not a number")
+  (cond ((not (and (exact? b) (exact? e))) (%expt b e))
+        ((negative? e) (/ 1 (expt b (- e))))
+        (else
+         (let loop ((b b) (e e) (acc 1))
+           (if (zero? e)
+               acc
+               (let ((acc (if (odd? e) (* acc b) acc))
+                     (e (quotient e 2)))
+                 (if (zero? e) acc (loop (* b b) e acc))))))))
+
+;; The `s` with `s^2 <= k < (s+1)^2`, and `k - s^2`: from `(sqrt k)`'s double,
+;; which may round, corrected either way.  `s^2` is compared as `s` against
+;; `k / s`, since a guess past the root may square past the fixnums.
+(define (exact-integer-sqrt k)
+  (unless (and (exact-integer? k) (not (negative? k)))
+    (error "exact-integer-sqrt: not an exact non-negative integer" k))
+  (let loop ((s (exact (floor (sqrt (inexact k))))))
+    (cond ((and (> s 0) (> s (quotient k s))) (loop (- s 1)))
+          ((<= (+ s 1) (quotient k (+ s 1))) (loop (+ s 1)))
+          (else (values s (- k (* s s)))))))

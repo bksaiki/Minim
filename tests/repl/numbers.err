@@ -36,3 +36,14 @@ error: remainder: division by zero: 0
 error: quotient: fixnum overflow
 error: gcd: not an integer: a
 error: lcm: not an integer: 1.5
+error: *: not a number: a
+error: *: fixnum overflow
+error: expt: not a number: a
+error: exact-integer-sqrt: not an exact non-negative integer: -1
+error: exact-integer-sqrt: not an exact non-negative integer: 4.0
+error: sqrt: no real result: -4
+error: log: no real result: -1
+error: log: no real result: -1
+error: asin: no real result: 2
+error: acos: no real result: -2
+error: exp: not a number: a

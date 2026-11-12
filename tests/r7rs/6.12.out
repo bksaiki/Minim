@@ -1,4 +1,1 @@
-FAIL 1962 (eval '(expt 2 10) (environment '(scheme base))) raised ("unbound variable" expt)
-FAIL 1964 (inexact (eval '(sin 0) (environment '(scheme inexact)))) raised ("unbound variable" sin)
-FAIL 1966 (eval '(+ (expt 2 10) (inexact (sin 0))) (environment '(scheme base) '(scheme inexact))) raised ("unbound variable" expt)
-6.12 Environments and evaluation: 1 passed, 3 failed, 0 errors
+6.12 Environments and evaluation: 4 passed, 0 failed, 0 errors

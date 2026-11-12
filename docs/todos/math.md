@@ -165,6 +165,22 @@ of 9, 2, and 9.0; each transcendental function at a few points, `(log 100
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'numbers|libraries|boot|r7rs'
 ```
 
+**Done.**  The `libm` functions share `libm(a, f, at, value)`, which
+returns the exact `value` at the exact `at`, and `check_real`, which raises
+`no real result` for an exact argument out of the real domain.  `(log 1 b)`
+is exact 0 for an exact base other than 1; `(log 0)` is -inf.0, a real
+limit, not an error.  `sqrt` corrects `sqrt((double)k)` in `intptr_t`,
+where `(s + 1)^2` can't overflow.  `exact-integer-sqrt` can't square in
+fixnums: the largest fixnum rounds to 2^60 as a double, whose root squared
+is one past the fixnums, so it compares `s` with `k / s`.  `expt` squares
+the base only while bits of the exponent remain, so `(expt 2 59)` doesn't
+overflow on a square it never uses.  The `(scheme base)` and `(scheme
+r5rs)` lists were re-sorted and refilled at 92 columns, their width.
+Tests compare non-special results within 1e-12, as `libm`s may differ in
+the last bit.  The reports: 6.2 129 to 154 passed; 6.8, 6.10, 6.11, and
+6.12 now pass entirely; 4.2 64 passed, 4 failed, 5 errors, the rest
+needing bignums or rationals.
+
 ### Phase 3 - `numerator`, `denominator`, and `rationalize`
 
 - `scheme/numbers.scm`: `numerator`, `denominator`, `rationalize`.

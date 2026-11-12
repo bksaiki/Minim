@@ -485,6 +485,106 @@ static minim_obj prim_round(minim_obj *args, size_t n) {
     return round_by(args, nearbyint, "round: not a number");
 }
 
+// Whether `a` is the exact integer `v`.
+static bool exact_is(num a, intptr_t v) {
+    return !a.flo && a.i == v;
+}
+
+// Raises `msg` with `x` unless `a` is inexact or `ok`: an exact argument whose
+// result would be complex, which Minim lacks.
+static void check_real(num a, bool ok, const char *msg, minim_obj x) {
+    check(a.flo || ok, msg, x);
+}
+
+// `f(a)`, a flonum, except that the exact `at` gives the exact `value`.
+static minim_obj libm(num a, double (*f)(double), intptr_t at, intptr_t value) {
+    return exact_is(a, at) ? minim_fixnum(value) : minim_make_flonum(f(num_double(a)));
+}
+
+// Exact for an exact perfect square: `(sqrt 9)` is 3.
+static minim_obj prim_sqrt(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "sqrt: not a number");
+    check_real(a, a.i >= 0, "sqrt: no real result", args[0]);
+    if (!a.flo) {
+        intptr_t s = (intptr_t)sqrt((double)a.i);  // the double may round either way
+        while (s * s > a.i)
+            s--;
+        while ((s + 1) * (s + 1) <= a.i)
+            s++;
+        if (s * s == a.i)
+            return minim_fixnum(s);
+    }
+    return minim_make_flonum(sqrt(num_double(a)));
+}
+
+static minim_obj prim_exp(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return libm(num_arg(args[0], "exp: not a number"), exp, 0, 1);
+}
+
+// The natural logarithm of args[0], or its logarithm in base args[1].
+static minim_obj prim_log(minim_obj *args, size_t n) {
+    num z = num_arg(args[0], "log: not a number");
+    check_real(z, z.i >= 0, "log: no real result", args[0]);
+    if (n == 1)
+        return libm(z, log, 1, 0);
+    num b = num_arg(args[1], "log: not a number");
+    check_real(b, b.i >= 0, "log: no real result", args[1]);
+    if (exact_is(z, 1) && !b.flo && b.i != 1)
+        return minim_fixnum(0);
+    return minim_make_flonum(log(num_double(z)) / log(num_double(b)));
+}
+
+static minim_obj prim_sin(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return libm(num_arg(args[0], "sin: not a number"), sin, 0, 0);
+}
+
+static minim_obj prim_cos(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return libm(num_arg(args[0], "cos: not a number"), cos, 0, 1);
+}
+
+static minim_obj prim_tan(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    return libm(num_arg(args[0], "tan: not a number"), tan, 0, 0);
+}
+
+static minim_obj prim_asin(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "asin: not a number");
+    check_real(a, a.i >= -1 && a.i <= 1, "asin: no real result", args[0]);
+    return libm(a, asin, 0, 0);
+}
+
+static minim_obj prim_acos(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "acos: not a number");
+    check_real(a, a.i >= -1 && a.i <= 1, "acos: no real result", args[0]);
+    return libm(a, acos, 1, 0);
+}
+
+// The arctangent of args[0], or of args[0] / args[1] in the quadrant of the
+// point (args[1], args[0]).
+static minim_obj prim_atan(minim_obj *args, size_t n) {
+    num y = num_arg(args[0], "atan: not a number");
+    if (n == 1)
+        return libm(y, atan, 0, 0);
+    num x = num_arg(args[1], "atan: not a number");
+    if (exact_is(y, 0) && !x.flo && x.i > 0)
+        return minim_fixnum(0);
+    return minim_make_flonum(atan2(num_double(y), num_double(x)));
+}
+
+// args[0] to the power args[1] by `pow`, for `expt` of inexact arguments.
+static minim_obj prim_expt(minim_obj *args, size_t n) {
+    MINIM_UNUSED(n);
+    num a = num_arg(args[0], "expt: not a number");
+    num b = num_arg(args[1], "expt: not a number");
+    return minim_make_flonum(pow(num_double(a), num_double(b)));
+}
+
 const minim_prim_def minim_number_prims[] = {
     {"+", prim_add, 0, MINIM_VARIADIC},
     {"-", prim_sub, 1, MINIM_VARIADIC},
@@ -515,5 +615,15 @@ const minim_prim_def minim_number_prims[] = {
     {"ceiling", prim_ceiling, 1, 1},
     {"truncate", prim_truncate, 1, 1},
     {"round", prim_round, 1, 1},
+    {"sqrt", prim_sqrt, 1, 1},
+    {"exp", prim_exp, 1, 1},
+    {"log", prim_log, 1, 2},
+    {"sin", prim_sin, 1, 1},
+    {"cos", prim_cos, 1, 1},
+    {"tan", prim_tan, 1, 1},
+    {"asin", prim_asin, 1, 1},
+    {"acos", prim_acos, 1, 1},
+    {"atan", prim_atan, 1, 2},
+    {"%expt", prim_expt, 2, 2},
     {NULL, NULL, 0, 0},
 };

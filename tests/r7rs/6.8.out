@@ -1,2 +1,1 @@
-FAIL 1510 (vector-ref '#(1 1 2 3 5 8 13 21) (let ((i (round (* 2 (acos -1))))) (if (inexact? i) (exact i) i))) raised ("unbound variable" acos)
-6.8 Vectors: 42 passed, 1 failed, 0 errors
+6.8 Vectors: 43 passed, 0 failed, 0 errors
