@@ -35,19 +35,6 @@ FAIL 980 (round -7/2) raised ("unbound variable" -7/2)
 FAIL 982 (round -7/10) raised ("unbound variable" -7/10)
 ERROR 984 ("unbound variable" 1/3)
 READ-ERROR 985 ("bad # syntax" "#i1/3")
-FAIL 988 (exp 3) => 20.085536923187668
-FAIL 1001 (tan 1) => 1.5574077246549023
-FAIL 1004 (asin 1) => 1.5707963267948966
-FAIL 1006 (acos -1) => 3.141592653589793
-FAIL 1013 (atan 1.0 1.0) => 0.7853981633974483
-FAIL 1014 (atan 1.0 0.0) => 1.5707963267948966
-FAIL 1015 (atan 1.0 -1.0) => 2.356194490192345
-FAIL 1016 (atan 0.0 -1.0) => 3.141592653589793
-FAIL 1017 (atan -0.0 -1.0) => -3.141592653589793
-FAIL 1018 (atan -1.0 -1.0) => -2.356194490192345
-FAIL 1019 (atan -1.0 0.0) => -1.5707963267948966
-FAIL 1020 (atan -1.0 1.0) => -0.7853981633974483
-FAIL 1027 (sqrt 2) => 1.4142135623730951
 ERROR 1028 ("unbound variable" 0.0+1.0i)
 ERROR 1029 ("unbound variable" 0.0+1.0i)
 ERROR 1039 ("unbound variable" 1/1024)
@@ -58,4 +45,4 @@ FAIL 1046 (real-part 1+2i) raised ("unbound variable" real-part)
 FAIL 1048 (imag-part 1+2i) raised ("unbound variable" imag-part)
 FAIL 1050 (magnitude 1+2i) raised ("unbound variable" magnitude)
 FAIL 1052 (angle 1+2i) raised ("unbound variable" angle)
-6.2 Numbers: 159 passed, 43 failed, 17 errors
+6.2 Numbers: 172 passed, 30 failed, 17 errors

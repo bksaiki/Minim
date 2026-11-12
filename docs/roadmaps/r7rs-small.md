@@ -231,11 +231,11 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | Section | Passed | Failed | Errors |
 |---|---|---|---|
 | 4.1 Primitive expression types | 27 | 0 | 0 |
-| 4.2 Derived expression types | 64 | 4 | 5 |
+| 4.2 Derived expression types | 65 | 3 | 5 |
 | 4.3 Macros | 26 | 0 | 0 |
 | 5 Program structure | 15 | 0 | 0 |
 | 6.1 Equivalence Predicates | 25 | 0 | 0 |
-| 6.2 Numbers | 159 | 43 | 17 |
+| 6.2 Numbers | 172 | 30 | 17 |
 | 6.3 Booleans | 18 | 0 | 0 |
 | 6.4 Lists | 65 | 0 | 0 |
 | 6.5 Symbols | 17 | 0 | 0 |
@@ -250,7 +250,7 @@ changes as milestones land, until every test passes.  Where Minim stands:
 | Read syntax | 92 | 1 | 0 |
 | Numeric syntax | 124 | 17 | 37 |
 | 6.14 System interface | 13 | 0 | 0 |
-| **Total** | 1067 | 65 | 59 |
+| **Total** | 1081 | 51 | 59 |
 
 The reports name each failing test by line; the gaps are those of the
 coverage table and of milestones 6 to 9.  Update the table with the reports.
