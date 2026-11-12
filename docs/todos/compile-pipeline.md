@@ -164,6 +164,20 @@ inside a top-level `begin` accepted; and forms whose values, through
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'compile|boot'
 ```
 
+**Done.**  `%parse` mirrors `eval.c`'s checks one for one, raising through
+`%bad-syntax`, whose message and irritants match `minim_error`'s; it also
+rejects definitions outside top level, `(if a (define x 1))` included,
+which the evaluator accepts while its environment is global.  A one-form
+`begin` becomes its form, keeping `top?`, so nested top-level `begin`s may
+define.  `%emit` adds `required` and `rest?` to each clause, from
+`%required` and `%rest?`.  The checkers share `%in-language?`, which
+rejects the other language's `lambda` or `clambda` and a `clambda` whose
+arity doesn't match its formals.  Helpers: `%formals?`, `%all?`,
+`%lambda-clause?`, `%values-clause?`, `%void-form`.  Tests as planned, in
+`tests/repl/compile.scm`: 22 forms printed and checked, 6 programs agreeing
+with the evaluator, 18 malformed forms raising the same failure, and the
+definition positions.
+
 ### Phase 3 - The hook
 
 - `src/eval.c`: after `%expand`, and on `minim_eval_expanded`'s and

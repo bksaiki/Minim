@@ -1,0 +1,31 @@
+x
+'5
+'#(1 2)
+'(a b)
+(if a b '#<void>)
+(if a b c)
+'#<void>
+a
+(begin a b c)
+(define x '1)
+(set! x (call f '1))
+(define-values (a . b) (call f))
+(let-values (((a) '1) ((b . c) (call f))) (begin a b))
+(letrec-values (((loop) (clambda ((n) 1 #f (call loop n))))) (call loop '0))
+(clambda ((x) 1 #f x))
+(clambda ((x y . z) 2 #t (begin (call f x) z)))
+(clambda (args 0 #t args))
+(clambda ((x) 1 #f x) ((x y) 2 #f y) (rest 0 #t rest))
+(clambda)
+(call f x '1)
+(call (clambda ((x) 1 #f x)) '1)
+(begin (define a '1) (define b (clambda (() 0 #f a))))
+((#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t) (#t #t))
+(#f #f #f #f #f #f #f)
+(#t #t #t #t #t #t)
+(3628800 (11 2 3 (4 5)) (more 1 (2 3)) () #<void> (1 (2)))
+(#t #t #t #t #t #t #t #t #t #t #t #t #t #t #t #t #t #t)
+("bad syntax" ((define x 1)))
+("bad syntax" ((define-values (x) 1)))
+("bad syntax" ((define x 1)))
+no-error
