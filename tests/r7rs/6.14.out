@@ -1,3 +1,1 @@
-FAIL 2518 (list? (features)) raised ("unbound variable" features)
-FAIL 2519 (and (memq 'r7rs (features)) #t) raised ("unbound variable" features)
-6.14 System interface: 11 passed, 2 failed, 0 errors
+6.14 System interface: 13 passed, 0 failed, 0 errors

@@ -50,11 +50,10 @@ chosen at compile time from R7RS Appendix B and the platform:
 
 - `r7rs`, `ieee-float`, `full-unicode`;
 - the OS: `posix` and `unix` off Windows, `windows` on it, and `gnu-linux`,
-  `darwin`, or `freebsd` when the compiler says so;
+  `darwin`, or `freebsd` and `bsd` when the compiler says so;
 - the CPU: `x86-64` or `aarch64`;
 - `lp64` or `ilp32`, and `little-endian` or `big-endian`;
-- `minim` and `minim-<version>`, from `MINIM_VERSION`, which moves from the
-  `minim` target to `libminim` in `CMakeLists.txt`.
+- `minim`, the implementation's name, without a version.
 
 Not `exact-closed` or `ratios`: without bignums and rationals, exact
 operations raise where those features promise exact results.
@@ -83,8 +82,7 @@ declarations.
 
 ### Phase 1 - `features`
 
-- `src/system.c`: `features`.  `CMakeLists.txt`: `MINIM_VERSION` on
-  `libminim`.
+- `src/system.c`: `features`.
 - `scheme/standard.scm`: `features` in `(scheme base)`.
   `scheme/prelude.boot` regenerated.
 
@@ -97,6 +95,16 @@ calls not `eq?`.  The 6.14 report updated.
 ```sh
 cmake --build --preset dev --target boot && cmake --build --preset dev && ctest --preset dev -R 'cond-expand|r7rs'
 ```
+
+**Done.**  `features` is a static table of names, the platform's chosen
+by the preprocessor, interned into a fresh list per call.  `gnu-linux`
+tests `__gnu_linux__`, not `__linux__`, so Android doesn't claim it; the
+size model is `lp64` by `__LP64__`/`_LP64`, `ilp32` for 32-bit pointers,
+and none on 64-bit Windows, which is LLP64, outside Appendix B's list;
+the byte order by `__BYTE_ORDER__`, else little-endian, as MSVC's targets
+are.  On this Linux machine: `(r7rs ieee-float full-unicode posix unix
+gnu-linux x86-64 lp64 little-endian minim)`.  The 6.14 report: 13 passed,
+0 failed.
 
 ### Phase 2 - `cond-expand`
 
@@ -151,19 +159,19 @@ cmake --preset release && cmake --build --preset release
 
 ## Open items
 
-### What if no `cond-expand` clause matches?
+None; see Settled in review.
 
-R7RS leaves it unspecified.  Expanding to nothing lets code silently lose
-definitions; raising tells the author at once.  Provisional: raise
-`cond-expand: no matching clause` with the form; reopen if portable code
-relies on the empty expansion.
+## Settled in review
 
-### Where does a top-level `include` look?
-
-Outside a library, `include` resolves against the current directory, so
-`minim dir/main.scm` including `"util.scm"` looks for `./util.scm`, not
-`dir/util.scm`.  R7RS leaves it to the implementation.  Looking beside the
-including file needs `load` to record its file's directory, as library
-loading does.  Provisional: the current directory,
-as `include` declarations do outside a library today; reopen when scripts
-need it.
+- No clause matching, with no `else`: raises `cond-expand: no matching
+  clause` with the form, so a missing branch shows at once rather than
+  silently losing definitions.  R7RS leaves it unspecified.
+- A top-level `include` resolves against the current directory, as
+  `include` declarations outside a library do today.  Looking beside the
+  including file would need `load` to record its file's directory.
+- `bsd` joins `freebsd` on FreeBSD, as R7RS Appendix B lists it.
+- The implementation is `minim` alone, as Chibi's is `chibi`.  A version
+  feature is either one release exactly (Gauche's `gauche-0.9.15`) or
+  "this release or later" (Guile's `guile-2.2`, kept by every later
+  release); nothing depends on a Minim version yet.  Reopen when a release
+  adds something code would check for, with Guile's kind.

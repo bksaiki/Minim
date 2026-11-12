@@ -11,7 +11,7 @@
    current-input-port current-output-port define define-record-type define-syntax
    define-values do dynamic-wind else eof-object eof-object? eq? equal? eqv? error
    error-object-irritants error-object-message error-object? even? exact exact-integer?
-   exact? file-error? floor flush-output-port for-each get-output-bytevector
+   exact? features file-error? floor flush-output-port for-each get-output-bytevector
    get-output-string guard if inexact inexact? input-port-open? input-port? integer->char
    integer? lambda length let let* let*-values let-syntax let-values letrec letrec*
    letrec-syntax list list->string list->vector list-copy list-ref list-set! list-tail list?
