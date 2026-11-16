@@ -100,30 +100,30 @@ static bool valid_lambda_clauses(minim_obj clauses) {
     return minim_is_null(clauses);
 }
 
-// The clause `(params body ...)` of the closure `c` that accepts `n`
-// arguments: a `lambda`'s own, or a `case-lambda`'s first that does.
+// Whether the compiled clause `(formals required rest? body)` accepts `n`
+// arguments.
+static bool compiled_clause_accepts(minim_obj c, size_t n) {
+    minim_obj arity = minim_cdr(c);
+    size_t required = (size_t)minim_fixnum_value(minim_car(arity));
+    return minim_car(minim_cdr(arity)) != MINIM_FALSE ? n >= required : n == required;
+}
+
+// The clause of the closure `c` that accepts `n` arguments: a `lambda`'s own,
+// `(params body ...)`, or the first that does of a `case-lambda`'s, or of a
+// `clambda`'s, `(formals required rest? body)`.
 static minim_obj clause_for(minim_obj c, size_t n) {
     minim_obj code = minim_closure_code(c);
-    if (minim_car(code) == minim_sym_lambda) {
+    minim_obj head = minim_car(code);
+    if (head == minim_sym_lambda) {
         if (closure_accepts(minim_car(minim_cdr(code)), n))
             return minim_cdr(code);
     } else {
         for (code = minim_cdr(code); minim_is_pair(code); code = minim_cdr(code)) {
-            if (closure_accepts(minim_car(minim_car(code)), n))
-                return minim_car(code);
+            minim_obj clause = minim_car(code);
+            if (head == minim_sym_clambda ? compiled_clause_accepts(clause, n)
+                                          : closure_accepts(minim_car(clause), n))
+                return clause;
         }
-    }
-    minim_error("arity mismatch", c);
-}
-
-// The clause `(formals required rest? body)` of the compiled closure `c` that
-// accepts `n` arguments: its first whose arity does.
-static minim_obj compiled_clause_for(minim_obj c, size_t n) {
-    for (minim_obj cs = minim_cdr(minim_closure_code(c)); minim_is_pair(cs); cs = minim_cdr(cs)) {
-        minim_obj arity = minim_cdr(minim_car(cs));
-        size_t required = (size_t)minim_fixnum_value(minim_car(arity));
-        if (minim_car(minim_cdr(arity)) != MINIM_FALSE ? n >= required : n == required)
-            return minim_car(cs);
     }
     minim_error("arity mismatch", c);
 }
@@ -361,14 +361,16 @@ ceval:  // Evaluates `expr`, in the simplified core, in `env`, unchecked.
         x = minim_cdr(expr);
         goto let_values;
     }
-    // set!, define, and define-values: evaluate the value, then bind it.
-    k = make_frame((x == minim_sym_set      ? K_SET
-                    : x == minim_sym_define ? K_DEFINE
-                                            : K_DEFINE_VALUES)
-                       | K_COMPILED,
-                   k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
-    expr = minim_car(minim_cdr(minim_cdr(expr)));
-    goto ceval;
+    if (x == minim_sym_set || x == minim_sym_define || x == minim_sym_define_values) {
+        // Evaluate the value, then bind it.
+        intptr_t kind = x == minim_sym_set      ? K_SET
+                      : x == minim_sym_define ? K_DEFINE
+                                              : K_DEFINE_VALUES;
+        k = make_frame(kind | K_COMPILED, k, minim_car(minim_cdr(expr)), env, MINIM_NIL);
+        expr = minim_car(minim_cdr(minim_cdr(expr)));
+        goto ceval;
+    }
+    minim_error("bad syntax", expr);
 
 sequence:  // Evaluates the non-empty body `x` in `env`; the last expression is a tail call.
     if (!minim_is_null(minim_cdr(x)))
@@ -386,6 +388,15 @@ let_values:  // Evaluates the next init of `x`, `(clauses . body)`, in `env`, or
     k = make_frame(K_LET_VALUES | (compiled ? K_COMPILED : 0), k, x, env, frame);
     expr = minim_car(minim_cdr(minim_car(minim_car(x))));
     goto next;
+
+enter:  // Evaluates the body of `expr`, the clause of a closure being applied, in
+        // `env`, in the language `compiled` says.
+    if (compiled) {
+        expr = compiled_clause_body(expr);
+        goto ceval;
+    }
+    x = minim_cdr(expr);
+    goto sequence;
 
 ret:  // Passes the values being returned to `k`.
     if (minim_is_null(k)) {
@@ -568,12 +579,12 @@ apply:  // Applies the procedure at `base` to the values above it.
                 || minim_primitive_fn(x) == minim_prim_eval_compiled) {
                 // Evaluates the core form, compiled, or the simplified form, globally,
                 // in tail position.
-                compiled = minim_primitive_fn(x) == minim_prim_eval_compiled;
                 expr = *minim_stack_at(base + 1);
                 minim_stack_pop_to(base);
                 env = MINIM_NIL;
-                if (!compiled)
+                if (minim_primitive_fn(x) == minim_prim_eval_expanded)
                     goto compile;
+                compiled = true;
                 goto ceval;
             }
             val = minim_primitive_fn(x)(minim_stack_at(base + 1), n);
@@ -597,16 +608,11 @@ apply:  // Applies the procedure at `base` to the values above it.
             minim_error("not a procedure", x);
 
         compiled = minim_car(minim_closure_code(x)) == minim_sym_clambda;
-        expr = compiled ? compiled_clause_for(x, n) : clause_for(x, n);  // rooted
+        expr = clause_for(x, n);  // rooted while the frame is made
         env = minim_env_extend(minim_car(expr), minim_stack_at(base + 1), n,
                                minim_closure_env(x));
         minim_stack_pop_to(base);
-        if (compiled) {
-            expr = compiled_clause_body(expr);
-            goto ceval;
-        }
-        x = minim_cdr(expr);
-        goto sequence;
+        goto enter;
     }
 
 apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, with
@@ -623,15 +629,10 @@ apply_long:  // Applies [apply f a ... lst] at `base`, too long for the stack, w
                 val = minim_cons(a, val);
             }
             compiled = minim_car(minim_closure_code(x)) == minim_sym_clambda;
-            expr = compiled ? compiled_clause_for(x, total) : clause_for(x, total);
+            expr = clause_for(x, total);
             env = minim_env_extend_list(minim_car(expr), val, minim_closure_env(x));
             minim_stack_pop_to(base);
-            if (compiled) {
-                expr = compiled_clause_body(expr);
-                goto ceval;
-            }
-            x = minim_cdr(expr);
-            goto sequence;
+            goto enter;
         }
         if (minim_is_continuation(x))
             minim_error("too many arguments", minim_fixnum((intptr_t)total));

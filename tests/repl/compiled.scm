@@ -57,3 +57,4 @@ f
 (%eval-compiled '(letrec-values (((a) b) ((b) (quote 1))) a))
 ((%eval-compiled '(clambda ((x) 1 #f x))) 1 2)
 (%eval-compiled '(call (quote 5)))
+(%eval-compiled '(lambda (x) x))

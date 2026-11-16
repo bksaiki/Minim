@@ -3,6 +3,7 @@
 (import (minim system))
 (eq? (%compile) %compile-form)
 (car (%closure-code (lambda (x) x)))
+(car (%closure-code ((lambda () (lambda (y) y)))))
 (car (%closure-code (eval '(lambda (x) x) (interaction-environment))))
 (car (%closure-code (parameterize ((%compile #f))
                       (eval '(lambda (x) x) (interaction-environment)))))
