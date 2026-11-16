@@ -21,9 +21,12 @@
 evaluated
 (%eval-expanded '((lambda (x) (if x 'yes 'no)) #t))
 (%eval-expanded '(let-values (((a b) (values 1 2))) (+ a b)))
+; %eval-expanded calls in tail position: deep with the compiler off, as it would
+; compile each form, and shallow with it on.
 (define (count-down n)
   (if (= n 0) 'done (%eval-expanded (list count-down (- n 1)))))
-(count-down 100000)
+(parameterize ((%compile #f)) (count-down 100000))
+(count-down 1000)
 (%eval-expanded '(when #t 1))
 (%eval-expanded '(if))
 (apply %eval-expanded '((+ 1 2)))

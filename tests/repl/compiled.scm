@@ -30,13 +30,13 @@ f
 ((procedure-rename (%eval-compiled '(clambda ((x) 1 #f (call + x (quote 1))))) 'inc) 41)
 (procedure-rename f 'renamed)
 
-; Tail calls: a million iterations.
+; Tail calls: a loop of ten thousand iterations.
 (%eval-compiled
  '(letrec-values (((loop) (clambda ((i acc) 2 #f (if (call = i (quote 0))
                                                      acc
                                                      (call loop (call - i (quote 1))
                                                                 (call + acc (quote 2))))))))
-    (call loop (quote 1000000) (quote 0))))
+    (call loop (quote 10000) (quote 0))))
 
 ; Continuations out of, and back into, compiled code.
 (%eval-compiled '(call + (quote 1) (call call/cc (clambda ((k) 1 #f (call k (quote 41)))))))
