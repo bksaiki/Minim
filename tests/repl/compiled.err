@@ -1,0 +1,4 @@
+error: unbound variable: b
+error: arity mismatch: #<procedure>
+error: not a procedure: 5
+error: bad syntax: (lambda (x) x)

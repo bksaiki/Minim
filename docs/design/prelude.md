@@ -19,6 +19,7 @@ them (`MINIM_SCHEME_SOURCES`):
 | `ports.scm` | the current ports, the port procedures with optional ports, and the bulk reads and writes (`ports.md`) |
 | `lazy.scm` | promises: `delay`, `delay-force`, `force`, `make-promise`, `promise?` |
 | `standard.scm` | the standard libraries, `(minim)`, and the REPL's import of it |
+| `compile.scm` | the compiler and its hook, `%compile`, last so the prelude runs uncompiled (`compile.md`) |
 
 The library holds what the kernel doesn't need (`primitives.md`): above
 all higher-order procedures, which primitives can't express because they

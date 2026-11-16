@@ -1,7 +1,8 @@
-usage: minim [--program] [file [arg ...]]
+usage: minim [--program] [--interpret] [file [arg ...]]
 Runs file as a script in the interaction environment, or else a REPL.
 Arguments after file are its own, for command-line.
 
-  --program  run file as an R7RS program, which sees only what it imports
-  --help     print this message
-  --version  print the version
+  --program    run file as an R7RS program, which sees only what it imports
+  --interpret  run forms as expanded, without compiling them
+  --help       print this message
+  --version    print the version

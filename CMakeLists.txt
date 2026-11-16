@@ -30,7 +30,7 @@ endif()
 
 # The Scheme sources, in load order, and the boot file they expand into.
 set(MINIM_SCHEME_SOURCES base lists sequences numbers control records expander libraries derived
-    eval ports lazy standard)
+    eval ports lazy standard compile)
 list(TRANSFORM MINIM_SCHEME_SOURCES PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/scheme/)
 list(TRANSFORM MINIM_SCHEME_SOURCES APPEND .scm)
 set(MINIM_BOOT ${CMAKE_CURRENT_SOURCE_DIR}/scheme/prelude.boot)

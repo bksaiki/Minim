@@ -1,2 +1,2 @@
 minim: missing file after --program
-usage: minim [--program] [file [arg ...]]
+usage: minim [--program] [--interpret] [file [arg ...]]
