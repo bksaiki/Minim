@@ -20,6 +20,11 @@ The prelude is interpreted, so a procedure written in Scheme costs a closure
 call and a lookup by name per variable: moving primitives into Scheme made
 `string-append` 43 times slower (`primitives.md`).
 
+Milestone 1 added the pipeline (`compile.md`): a compiler in Scheme, with
+`parse` and `emit`, whose output, the simplified core, still finds variables
+by name, run beside the core; and its hook.  The prelude still runs
+uncompiled.
+
 ## Target
 
 Two core languages, both runnable:
@@ -34,8 +39,9 @@ Two core languages, both runnable:
 The compiler is Scheme (`scheme/compile.scm`), a sequence of small passes,
 each from one intermediate language to the next, checked in tests by a
 checker per language.  The evaluator calls it through a hook, `%compile`,
-after `%expand`, as it calls the expander; with the hook unbound, the
-unsimplified core runs.  So the suite can run both ways, and must agree.
+a parameter, after `%expand`, as it calls the expander; with it `#f`, as
+`minim --interpret` sets it, the unsimplified core runs.  So the suite runs
+both ways, and must agree.
 The boot file holds compiled code: `boot_gen` expands and compiles the
 prelude with itself, regenerated twice, as the expander already is.
 
@@ -50,7 +56,7 @@ five, L more.  Each milestone measures `bench/run.sh` against `main`, with
 the microbenchmarks of the procedures the primitives review moved into
 Scheme.
 
-### 1. The pipeline (M)
+### 1. The pipeline (M) — done
 
 - The simplified core, lists with symbol heads, run by the machine beside
   the unsimplified core.  Which language runs is known by context, never by
@@ -149,7 +155,8 @@ Depends on 2; best after 4 to 7, which shape the instructions.
   `%eval-expanded`, not only through `%expand`.
 - **Folding it into `%expand`** adds no hook, but each producer of core
   forms must remember to compile.
-- **Provisional:** a separate hook.
+- **Settled:** a separate hook, a parameter, which `parameterize` scopes
+  and `#f` switches off (`compile.md`).
 
 ### How does a closure say it is compiled?
 

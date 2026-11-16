@@ -91,6 +91,7 @@ and symbols, including nested ones, print as their characters:
 | `minim` | the REPL |
 | `minim file.scm arg ...` | the script `file.scm`, by `(load "file.scm")` |
 | `minim --program file.scm arg ...` | the R7RS program `file.scm` |
+| `minim --interpret ...` | any of these, with forms run uncompiled: `%compile` set to `#f` first (`compile.md`) |
 | `minim --help`, `minim --version` | prints the usage or the version (`project` in `CMakeLists.txt`) |
 
 Options come before the file; the arguments after it are the script's or

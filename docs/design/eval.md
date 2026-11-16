@@ -2,19 +2,24 @@
 
 `minim_eval(expr)` evaluates `expr` in the global environment with an
 explicit-stack machine, so Scheme recursion never uses the C stack and tail
-calls run in constant space.  It returns the one value; `minim_eval_values`
+calls run in constant space.  It runs two languages: the core forms
+(`macros.md`), checked as they run, and the simplified core the compiler
+makes of them (`compile.md`), unchecked.  It returns the one value; `minim_eval_values`
 returns the list of any number of values.  Primitive procedures are in
 `primitives.md`.
 
 ## Closures
 
 A closure (layout in `gc.md`) holds its form, `(lambda params body ...)` or
-`(case-lambda (params body ...) ...)`, as `code`, and the environment it was
-created in.  The form is shared by every closure it makes.  After Chez
+`(case-lambda (params body ...) ...)`, or, made by compiled code,
+`(clambda (params required rest? body) ...)`, as `code`, and the environment
+it was created in.  The form is shared by every closure it makes, and its
+head says which language the closure runs in.  After Chez
 Scheme, where every procedure is a `case-lambda`, applying a closure takes a
 `lambda`'s parameters and body, or a `case-lambda`'s first clause whose
 parameters accept the arguments' number, on the stack and through `apply`'s
-long path alike; `arity mismatch` if none does.
+long path alike; `arity mismatch` if none does.  A `clambda` clause is chosen
+by its `required` and `rest?`, without walking its parameters.
 
 A closure's name, a symbol or `#f`, is its own, not its form's.  Binding a
 variable to an unnamed closure names it after the variable: `define`,
@@ -26,12 +31,18 @@ and a `lambda` passed to `map` stays anonymous.
 ## Machine
 
 The registers `expr`, `env`, `val`, and `k` are locals of the machine loop,
-`run`, protected by `MINIM_FRAME`.  `minim_eval` calls it inside a catch,
+`run`, protected by `MINIM_FRAME`; `compiled` says which language `expr` is
+in, `eval` running the core and `ceval` the simplified core.  It is never
+carried across a jump: applying a closure sets it from the closure's code,
+returning to a frame from the frame, and each entry from what it takes.  `minim_eval` calls it inside a catch,
 which raises an error in Scheme or passes it on (`errors.md`); the `setjmp`
 is outside the loop, so no register is live across the jump.
 
 `k` is the continuation: a chain of heap frames, vectors
-`#(kind next code env base)`.  `'()` returns from `minim_eval`.
+`#(kind next code env base)`.  `'()` returns from `minim_eval`.  A frame
+pushed by compiled code has `K_COMPILED` in its kind, so it resumes in
+`ceval`; a tail call pushes none, and a continuation's frames carry their
+own.
 
 | Kind | `code` holds | On return |
 |---|---|---|
@@ -40,7 +51,9 @@ is outside the loop, so no register is live across the jump.
 | `DEFINE` | symbol | bind it to the value |
 | `SET` | symbol | set it to the value |
 | `ARGS` | remaining operands | push the value; evaluate the next operand or apply |
-| `EXPAND` | unused | evaluate the value, an expanded form, in the global environment |
+| `EXPAND` | unused | compile the value, an expanded form, and evaluate it globally |
+| `COMPILER` | the core form | run it uncompiled if the value is `#f`, else apply the value to it |
+| `COMPILE` | unused | evaluate the value, simplified, in `ceval`, globally |
 | `TOPLEVEL` | remaining top-level forms | run the next form, or return void |
 | `CALL_VALUES` | unused | apply the consumer, at `base`, to the values |
 | `DEFINE_VALUES` | formals | bind them to the values |
@@ -95,7 +108,12 @@ and `dynamic-wind` wrap `%call/cc` in the prelude (`prelude.md`).
 `minim_eval`'s argument and each form of a loaded file are *top-level forms*.
 If the global `%expand` holds a value, a top-level form is first passed to it
 and the result is evaluated instead; otherwise the form is evaluated as is.
-The call goes through the machine, so `%expand` may be a closure.  A file's
+The call goes through the machine, so `%expand` may be a closure.  The core
+form is then compiled: the machine calls `(%compile)`, the compiler hook
+(`compile.md`), and, unless that is `#f` or `%compile` is unbound, applies
+it to the form and runs the result in `ceval`; else the form runs in
+`eval`.  `minim_eval_expanded` and `%eval-expanded` compile their forms
+likewise; `%eval-compiled` runs simplified code as is.  A file's
 forms are read up front but expanded one at a time, each after the previous
 one has run, so a `%expand` defined by one form applies to the next.
 `minim_eval_expanded` (`src/eval.h`) evaluates a form already in core forms

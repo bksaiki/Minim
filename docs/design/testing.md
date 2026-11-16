@@ -2,7 +2,10 @@
 
 Tests are registered in `tests/CMakeLists.txt` and need the `dev` build
 (sanitizers on).  `ctest --preset dev` runs them; `ctest --preset stress`
-runs each again under GC stress.
+runs each again under GC stress; `ctest --preset interpreted` runs them with
+forms uncompiled: it sets `MINIM_TEST_INTERPRET`, on which the test scripts
+pass `minim --interpret`, and skips the tests labelled `compiled-only`,
+which hold only with the compiler on.
 
 | Kind | Source | Checks |
 |---|---|---|

@@ -16,8 +16,8 @@ evaluator, Unicode tables, `libm`).  The rest is in the prelude
 
 ## Primitives the evaluator applies
 
-`apply`, `load`, `values`, `call-with-values`, `%call/cc`, and
-`%eval-expanded` need to evaluate code or return to the machine, which an
+`apply`, `load`, `values`, `call-with-values`, `%call/cc`, `%eval-expanded`,
+and `%eval-compiled` need to evaluate code or return to the machine, which an
 ordinary primitive can't do without re-entering `minim_eval`.  So they are
 registered as primitives, but the evaluator recognizes their function
 pointers (`minim_prim_apply`, ...) and never calls them:
@@ -38,7 +38,9 @@ pointers (`minim_prim_apply`, ...) and never calls them:
   forms (see `eval.md`) and returns void.  A read error therefore runs
   none of the file.
 - `%eval-expanded` evaluates its argument, already in core forms, globally
-  and in tail position, for `eval` (`macros.md`).
+  and in tail position, compiled as a top-level form is (`eval.md`), for
+  `eval` (`macros.md`).  `%eval-compiled` evaluates its argument, in the
+  simplified core (`compile.md`), likewise.
 
 ## Equality and hashing
 
